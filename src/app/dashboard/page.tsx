@@ -22,12 +22,10 @@ export default async function DashboardPage({
 }) {
   const params = await searchParams;
   const supabase = await createClient();
-  const { month, monthLabel, availableMonths } = await resolveDashboardMonth(
-    supabase,
-    params.month
-  );
+  const { month, monthLabel, availableMonths, shouldRedirect } =
+    await resolveDashboardMonth(supabase, params.month);
 
-  if (!params.month && availableMonths.length > 0) {
+  if (shouldRedirect) {
     redirect(`/dashboard?month=${monthLabel}`);
   }
 
@@ -57,7 +55,10 @@ export default async function DashboardPage({
     }));
 
   const rows = (summaries ?? []).filter(
-    (r) => Number(r.total_revenue) > 0 || Number(r.total_cost) > 0
+    (r) =>
+      Number(r.total_revenue) > 0 ||
+      Number(r.total_cost) > 0 ||
+      Number(r.total_energy_wh ?? 0) > 0
   );
   const totalRevenue = rows.reduce((s, r) => s + Number(r.total_revenue), 0);
   const totalCost = rows.reduce((s, r) => s + Number(r.total_cost), 0);
@@ -81,7 +82,6 @@ export default async function DashboardPage({
     totalRequests === 0;
 
   const hasData = rows.length > 0;
-  const otherMonths = availableMonths.filter((m) => m !== monthLabel);
 
   return (
     <div className="space-y-8">
@@ -160,26 +160,8 @@ export default async function DashboardPage({
             No margin data for {monthLabel}
           </h2>
           <p className="mt-2 text-sm text-[var(--muted)]">
-            Sample fixtures use <strong className="text-black">2026-06</strong>.
-            After upload, pick that month above — or upload logs/revenue for{" "}
-            {monthLabel}.
+            Upload AI logs and revenue to see portfolio margins and energy estimates.
           </p>
-          {otherMonths.length > 0 && (
-            <p className="mt-4 text-sm text-[var(--muted)]">
-              Data available for:{" "}
-              {otherMonths.map((m, i) => (
-                <span key={m}>
-                  {i > 0 && ", "}
-                  <Link
-                    href={`/dashboard?month=${m}`}
-                    className="font-medium text-black underline"
-                  >
-                    {m}
-                  </Link>
-                </span>
-              ))}
-            </p>
-          )}
           <div className="mt-6 flex justify-center gap-3">
             <Link href="/dashboard/clients" className="brand-btn-ghost">
               Add clients
@@ -209,6 +191,7 @@ export default async function DashboardPage({
               label="Energy / request (est.)"
               value={formatEnergyPerRequest(energyPerRequest)}
               sub={`${formatEnergyWh(totalEnergyWh)} total · Estimated`}
+              emphasize
             />
           </div>
 
@@ -231,7 +214,7 @@ export default async function DashboardPage({
                 </Link>
               )}
             </div>
-            <div className="brand-panel overflow-hidden">
+            <div className="brand-panel overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead className="brand-table-head">
                   <tr>
@@ -240,7 +223,12 @@ export default async function DashboardPage({
                     <th className="px-4 py-3 font-medium">AI cost</th>
                     <th className="px-4 py-3 font-medium">Margin</th>
                     <th className="px-4 py-3 font-medium">Margin %</th>
-                    <th className="px-4 py-3 font-medium">Energy / req (est.)</th>
+                    <th className="px-4 py-3 font-medium text-black">
+                      Energy / req
+                    </th>
+                    <th className="px-4 py-3 font-medium text-black">
+                      Total energy
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -252,7 +240,10 @@ export default async function DashboardPage({
                       row.energy_wh_per_request !== null &&
                       row.energy_wh_per_request !== undefined
                         ? Number(row.energy_wh_per_request)
-                        : null;
+                        : Number(row.request_count) > 0
+                          ? Number(row.total_energy_wh) / Number(row.request_count)
+                          : null;
+                    const totalWh = Number(row.total_energy_wh ?? 0);
                     return (
                       <tr
                         key={row.client_id}
@@ -283,8 +274,14 @@ export default async function DashboardPage({
                         >
                           {formatPercent(pct)}
                         </td>
-                        <td className="px-4 py-3 text-[var(--muted)]">
+                        <td className="px-4 py-3 font-semibold text-black">
                           {formatEnergyPerRequest(perReq)}
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-black">
+                          {formatEnergyWh(totalWh)}
+                          <span className="ml-1 text-xs font-normal text-[var(--muted)]">
+                            est.
+                          </span>
                         </td>
                       </tr>
                     );
@@ -304,15 +301,23 @@ function StatCard({
   value,
   sub,
   alert,
+  emphasize,
 }: {
   label: string;
   value: string;
   sub?: string;
   alert?: boolean;
+  emphasize?: boolean;
 }) {
   return (
     <div
-      className={`brand-panel p-5 ${alert ? "border-black bg-black text-white" : ""}`}
+      className={`brand-panel p-5 ${
+        alert
+          ? "border-black bg-black text-white"
+          : emphasize
+            ? "border-2 border-black"
+            : ""
+      }`}
     >
       <p className={`text-sm ${alert ? "text-white/70" : "text-[var(--muted)]"}`}>
         {label}
