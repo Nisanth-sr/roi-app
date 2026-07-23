@@ -13,10 +13,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "4emet",
+  title: "AI ROI",
   description: "Per-client AI margin visibility — see which customers are quietly unprofitable",
   icons: {
-    icon: "/brand/4emet-mark.png",
+    icon: [{ url: "/brand/logo.png", type: "image/png" }],
+    shortcut: "/brand/logo.png",
+    apple: "/brand/logo.png",
   },
 };
 

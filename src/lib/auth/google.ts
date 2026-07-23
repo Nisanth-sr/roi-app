@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 
-export const COMPANY_NAME_STORAGE_KEY = "4emet_company_name";
+export const COMPANY_NAME_STORAGE_KEY = "roi_company_name";
 
 export async function signInWithGoogle(options?: {
   next?: string;

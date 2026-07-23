@@ -11,13 +11,14 @@ export default async function HomePage() {
     <div className="brand-shell flex min-h-screen flex-col items-center justify-center px-4">
       <div className="max-w-xl text-center">
         <div className="flex justify-center">
-          <BrandMark href={null} size="lg" showWordmark={false} />
+          <BrandMark href={null} size="lg" />
         </div>
-        <h1 className="mt-6 text-5xl font-semibold tracking-tight text-black sm:text-6xl">
-          4emet
+        <h1 className="mt-8 text-3xl font-semibold tracking-tight text-black sm:text-4xl">
+          See which of your clients are quietly costing more than they pay.
         </h1>
         <p className="mt-4 text-lg text-[var(--muted)]">
-          See which of your clients are quietly costing more than they pay.
+          Upload AI usage and revenue — get per-client margin and efficiency
+          visibility.
         </p>
         <div className="mt-10 flex justify-center gap-3">
           <Link href="/signup" className="brand-btn">
