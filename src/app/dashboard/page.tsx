@@ -31,16 +31,20 @@ export default async function DashboardPage({
     redirect(`/dashboard?month=${monthLabel}`);
   }
 
-  const [{ data: summaries }, { data: coefficientRows }] = await Promise.all([
-    supabase
-      .from("monthly_client_summary")
-      .select("*, clients(name, external_ref)")
-      .eq("month", month)
-      .order("margin_percent", { ascending: true }),
-    supabase.from("energy_coefficients").select("*"),
-  ]);
+  const [{ data: summaries, error: summaryError }, { data: coefficientRows, error: coeffError }] =
+    await Promise.all([
+      supabase
+        .from("monthly_client_summary")
+        .select("*, clients(name, external_ref)")
+        .eq("month", month)
+        .order("margin_percent", { ascending: true }),
+      supabase.from("energy_coefficients").select("*"),
+    ]);
 
-  const coefficients = (coefficientRows ?? []) as EnergyCoefficient[];
+  const energySchemaReady = !coeffError;
+  const coefficients = energySchemaReady
+    ? ((coefficientRows ?? []) as EnergyCoefficient[])
+    : [];
   const methodologySources = coefficients
     .filter((c) => !c.effective_to || c.effective_to >= month)
     .map((c) => ({
@@ -70,6 +74,11 @@ export default async function DashboardPage({
   );
   const energyPerRequest =
     totalRequests > 0 ? totalEnergyWh / totalRequests : null;
+  const needsEnergyBackfill =
+    energySchemaReady &&
+    rows.length > 0 &&
+    totalCost > 0 &&
+    totalRequests === 0;
 
   const hasData = rows.length > 0;
   const otherMonths = availableMonths.filter((m) => m !== monthLabel);
@@ -87,6 +96,63 @@ export default async function DashboardPage({
           <MonthPicker />
         </Suspense>
       </div>
+
+      {!energySchemaReady && (
+        <div className="brand-panel border-dashed p-5">
+          <h2 className="text-sm font-medium text-black">
+            Energy schema not applied
+          </h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Run{" "}
+            <code className="text-xs">supabase/migrations/00002_energy_per_outcome.sql</code>{" "}
+            in the Supabase SQL editor, hard-refresh this page, then use{" "}
+            <Link href="/dashboard/settings" className="underline">
+              Settings → Recompute margins &amp; energy
+            </Link>
+            .
+            {coeffError?.message ? (
+              <>
+                {" "}
+                ({coeffError.message})
+              </>
+            ) : null}
+          </p>
+        </div>
+      )}
+
+      {energySchemaReady && coefficients.length === 0 && (
+        <div className="brand-panel border-dashed p-5">
+          <h2 className="text-sm font-medium text-black">
+            No energy coefficients seeded
+          </h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Re-run the seed section of migration 00002 (or{" "}
+            <code className="text-xs">supabase/seed.sql</code>), then recompute.
+          </p>
+        </div>
+      )}
+
+      {needsEnergyBackfill && (
+        <div className="brand-panel border-dashed p-5">
+          <h2 className="text-sm font-medium text-black">
+            Energy estimates not rolled up yet
+          </h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Schema is ready, but this month still shows 0 requests. Open{" "}
+            <Link href="/dashboard/settings" className="underline">
+              Settings → Recompute margins &amp; energy
+            </Link>{" "}
+            to backfill Wh from existing token logs.
+          </p>
+        </div>
+      )}
+
+      {summaryError && (
+        <div className="brand-panel border-dashed p-5">
+          <h2 className="text-sm font-medium text-black">Could not load summaries</h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">{summaryError.message}</p>
+        </div>
+      )}
 
       {!hasData ? (
         <div className="brand-panel border-dashed p-10 text-center">
