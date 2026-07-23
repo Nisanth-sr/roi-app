@@ -34,6 +34,20 @@ export type ModelPricing = {
   created_at: string;
 };
 
+export type EnergyCoefficient = {
+  id: string;
+  model_family: string;
+  model_id_pattern: string | null;
+  wh_per_million_tokens: number;
+  overhead_factor: number;
+  effective_from: string;
+  effective_to: string | null;
+  source_citation: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type UploadBatch = {
   id: string;
   tenant_id: string;
@@ -54,6 +68,7 @@ export type AiRequestLog = {
   input_tokens: number;
   output_tokens: number;
   computed_cost: number;
+  computed_energy_wh: number;
   upload_batch_id: string;
   source: "csv" | "json";
 };
@@ -77,6 +92,9 @@ export type MonthlyClientSummary = {
   margin: number;
   margin_percent: number | null;
   red_flag: boolean;
+  total_energy_wh: number;
+  request_count: number;
+  energy_wh_per_request: number | null;
   computed_at: string;
 };
 
@@ -107,4 +125,7 @@ export type PortfolioSummary = {
   blended_margin_percent: number | null;
   client_count: number;
   red_flag_count: number;
+  total_energy_wh: number;
+  request_count: number;
+  energy_wh_per_request: number | null;
 };

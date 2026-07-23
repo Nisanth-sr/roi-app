@@ -28,7 +28,7 @@ async function runRollupForMonth(
 
   const { data: logs } = await supabase
     .from("ai_request_log")
-    .select("client_id, computed_cost")
+    .select("client_id, computed_cost, computed_energy_wh")
     .eq("tenant_id", tenantId)
     .gte("requested_at", month)
     .lt("requested_at", monthEnd);
@@ -45,11 +45,24 @@ async function runRollupForMonth(
     .eq("tenant_id", tenantId);
 
   const costByClient = new Map<string, number>();
+  const energyByClient = new Map<string, number>();
+  const requestCountByClient = new Map<string, number>();
+
   for (const log of logs ?? []) {
-    const current = costByClient.get(log.client_id) ?? 0;
+    const clientId = log.client_id;
     costByClient.set(
-      log.client_id,
-      roundMoney(current + Number(log.computed_cost))
+      clientId,
+      roundMoney((costByClient.get(clientId) ?? 0) + Number(log.computed_cost))
+    );
+    energyByClient.set(
+      clientId,
+      roundEnergyWh(
+        (energyByClient.get(clientId) ?? 0) + Number(log.computed_energy_wh)
+      )
+    );
+    requestCountByClient.set(
+      clientId,
+      (requestCountByClient.get(clientId) ?? 0) + 1
     );
   }
 
@@ -61,7 +74,13 @@ async function runRollupForMonth(
   const summaries = (clients ?? []).map((client) => {
     const totalCost = costByClient.get(client.id) ?? 0;
     const totalRevenue = revenueByClient.get(client.id) ?? 0;
+    const totalEnergyWh = energyByClient.get(client.id) ?? 0;
+    const requestCount = requestCountByClient.get(client.id) ?? 0;
     const { margin, marginPercent } = computeMargin(totalRevenue, totalCost);
+    const energyWhPerRequest =
+      requestCount > 0
+        ? roundEnergyWh(totalEnergyWh / requestCount)
+        : null;
 
     return {
       tenant_id: tenantId,
@@ -72,6 +91,9 @@ async function runRollupForMonth(
       margin,
       margin_percent: marginPercent,
       red_flag: evaluateRedFlag(totalRevenue, totalCost, redFlagThreshold),
+      total_energy_wh: totalEnergyWh,
+      request_count: requestCount,
+      energy_wh_per_request: energyWhPerRequest,
       computed_at: new Date().toISOString(),
     };
   });
@@ -89,6 +111,10 @@ function nextMonthStart(month: string): string {
   const d = new Date(month);
   d.setUTCMonth(d.getUTCMonth() + 1);
   return d.toISOString().slice(0, 10);
+}
+
+function roundEnergyWh(value: number): number {
+  return Math.round(value * 1e10) / 1e10;
 }
 
 export async function deleteUploadBatch(

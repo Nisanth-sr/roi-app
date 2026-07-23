@@ -1,4 +1,13 @@
-import type { Client, ModelPricing, UploadRowError } from "@/lib/types";
+import type {
+  Client,
+  EnergyCoefficient,
+  ModelPricing,
+  UploadRowError,
+} from "@/lib/types";
+import {
+  computeRequestEnergy,
+  findCoefficientForModel,
+} from "@/modules/energy/engine";
 import {
   computeRequestCost,
   findPricingForDate,
@@ -19,6 +28,7 @@ export type ValidatedLogRow = {
   inputTokens: number;
   outputTokens: number;
   computedCost: number;
+  computedEnergyWh: number;
   month: string;
 };
 
@@ -52,7 +62,8 @@ export function resolveClientId(
 export function validateLogRows(
   rawRows: Record<string, string>[],
   clients: Client[],
-  pricingRows: ModelPricing[]
+  pricingRows: ModelPricing[],
+  energyCoefficients: EnergyCoefficient[] = []
 ): { valid: ValidatedLogRow[]; errors: UploadRowError[] } {
   const valid: ValidatedLogRow[] = [];
   const errors: UploadRowError[] = [];
@@ -136,6 +147,21 @@ export function validateLogRows(
       return;
     }
 
+    const coefficient = findCoefficientForModel(
+      energyCoefficients,
+      row.model_id,
+      requestedAt
+    );
+
+    if (!coefficient) {
+      errors.push({
+        row: rowNum,
+        field: "model_id",
+        message: `No energy coefficient for model ${row.model_id} at ${requestedAt.toISOString()}`,
+      });
+      return;
+    }
+
     const provider =
       row.provider === "bedrock" || row.provider === "vertex"
         ? row.provider
@@ -149,6 +175,11 @@ export function validateLogRows(
       inputTokens,
       outputTokens,
       computedCost: computeRequestCost(inputTokens, outputTokens, pricing),
+      computedEnergyWh: computeRequestEnergy(
+        inputTokens,
+        outputTokens,
+        coefficient
+      ),
       month: monthStart(requestedAt),
     });
   });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireOwner, isErrorResponse } from "@/lib/api/auth";
 import { createClient } from "@/lib/supabase/server";
+import { backfillRequestEnergy } from "@/modules/energy/backfill";
 import { monthStart } from "@/modules/pricing/engine";
 import { runRollupForMonths } from "@/modules/rollup/compute";
 
@@ -65,10 +66,18 @@ export async function POST(request: Request) {
     tenant?.red_flag_threshold ?? ctx.tenant.red_flag_threshold
   );
 
+  // Backfill energy from tokens + effective coefficients before rollup
+  const energyRowsUpdated = await backfillRequestEnergy(
+    supabase,
+    ctx.tenantId,
+    months
+  );
+
   await runRollupForMonths(supabase, ctx.tenantId, months, threshold);
 
   return NextResponse.json({
     recomputedMonths: months,
     red_flag_threshold: threshold,
+    energy_rows_updated: energyRowsUpdated,
   });
 }

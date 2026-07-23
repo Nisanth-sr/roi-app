@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Client, ModelPricing } from "@/lib/types";
+import type { Client, EnergyCoefficient, ModelPricing } from "@/lib/types";
 import {
   validateClientRows,
   validateLogRows,
@@ -39,8 +39,24 @@ const pricing: ModelPricing[] = [
   },
 ];
 
+const energyCoefficients: EnergyCoefficient[] = [
+  {
+    id: "e1",
+    model_family: "claude",
+    model_id_pattern: "claude-sonnet-4-6",
+    wh_per_million_tokens: 180,
+    overhead_factor: 1.2,
+    effective_from: "2026-01-01",
+    effective_to: null,
+    source_citation: "test",
+    notes: null,
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+  },
+];
+
 describe("upload validation", () => {
-  it("accepts valid log rows and computes cost", () => {
+  it("accepts valid log rows and computes cost and energy", () => {
     const { valid, errors } = validateLogRows(
       [
         {
@@ -52,11 +68,13 @@ describe("upload validation", () => {
         },
       ],
       clients,
-      pricing
+      pricing,
+      energyCoefficients
     );
     expect(errors).toHaveLength(0);
     expect(valid).toHaveLength(1);
     expect(valid[0].computedCost).toBeGreaterThan(0);
+    expect(valid[0].computedEnergyWh).toBeGreaterThan(0);
   });
 
   it("fails rows with unknown client — never silent drop", () => {
@@ -71,7 +89,8 @@ describe("upload validation", () => {
         },
       ],
       clients,
-      pricing
+      pricing,
+      energyCoefficients
     );
     expect(valid).toHaveLength(0);
     expect(errors).toHaveLength(1);
@@ -90,11 +109,32 @@ describe("upload validation", () => {
         },
       ],
       clients,
-      pricing
+      pricing,
+      energyCoefficients
     );
     expect(valid).toHaveLength(0);
     expect(errors).toHaveLength(1);
     expect(errors[0].message).toContain("No pricing");
+  });
+
+  it("fails rows with no energy coefficient", () => {
+    const { valid, errors } = validateLogRows(
+      [
+        {
+          client_id: "client-a",
+          request_timestamp: "2026-06-15T10:00:00Z",
+          model_id: "claude-sonnet-4-6",
+          input_tokens: "100",
+          output_tokens: "50",
+        },
+      ],
+      clients,
+      pricing,
+      []
+    );
+    expect(valid).toHaveLength(0);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].message).toContain("No energy coefficient");
   });
 
   it("validates revenue rows", () => {

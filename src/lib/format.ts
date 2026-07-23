@@ -12,6 +12,24 @@ export function formatPercent(value: number | null): string {
   return `${value.toFixed(1)}%`;
 }
 
+/** Format estimated watt-hours; switch to kWh at scale. */
+export function formatEnergyWh(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+  if (Math.abs(value) >= 1000) {
+    return `${(value / 1000).toLocaleString("en-US", {
+      maximumFractionDigits: 2,
+    })} kWh`;
+  }
+  return `${value.toLocaleString("en-US", {
+    maximumFractionDigits: value < 1 ? 4 : 2,
+  })} Wh`;
+}
+
+export function formatEnergyPerRequest(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return "—";
+  return `${formatEnergyWh(value)} / req`;
+}
+
 /** Black/white margin emphasis — no color palette. */
 export function marginColor(marginPercent: number | null, redFlag: boolean): string {
   if (redFlag) return "font-semibold text-black";

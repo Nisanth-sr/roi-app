@@ -37,6 +37,16 @@ export async function GET(request: Request) {
   const blendedMargin = totalRevenue - totalCost;
   const blendedMarginPercent =
     totalRevenue > 0 ? (blendedMargin / totalRevenue) * 100 : null;
+  const totalEnergyWh = rows.reduce(
+    (sum, r) => sum + Number(r.total_energy_wh ?? 0),
+    0
+  );
+  const requestCount = rows.reduce(
+    (sum, r) => sum + Number(r.request_count ?? 0),
+    0
+  );
+  const energyWhPerRequest =
+    requestCount > 0 ? totalEnergyWh / requestCount : null;
 
   const portfolio: PortfolioSummary = {
     month,
@@ -49,6 +59,12 @@ export async function GET(request: Request) {
         : null,
     client_count: rows.length,
     red_flag_count: rows.filter((r) => r.red_flag).length,
+    total_energy_wh: Math.round(totalEnergyWh * 1e6) / 1e6,
+    request_count: requestCount,
+    energy_wh_per_request:
+      energyWhPerRequest !== null
+        ? Math.round(energyWhPerRequest * 1e10) / 1e10
+        : null,
   };
 
   const clientsSorted = [...rows].sort((a, b) => {

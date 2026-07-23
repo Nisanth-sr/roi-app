@@ -1,10 +1,19 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { MethodologyDisclosure } from "@/components/MethodologyDisclosure";
 import { MonthPicker } from "@/components/MonthPicker";
 import { resolveDashboardMonth } from "@/lib/dashboard-month";
-import { formatCurrency, formatPercent, marginColor } from "@/lib/format";
+import {
+  formatCurrency,
+  formatEnergyPerRequest,
+  formatEnergyWh,
+  formatPercent,
+  marginColor,
+} from "@/lib/format";
+import type { EnergyCoefficient } from "@/lib/types";
 import { createClient } from "@/lib/supabase/server";
+import { latestCoefficientUpdatedAt } from "@/modules/energy/engine";
 
 export default async function DashboardPage({
   searchParams,
@@ -22,11 +31,26 @@ export default async function DashboardPage({
     redirect(`/dashboard?month=${monthLabel}`);
   }
 
-  const { data: summaries } = await supabase
-    .from("monthly_client_summary")
-    .select("*, clients(name, external_ref)")
-    .eq("month", month)
-    .order("margin_percent", { ascending: true });
+  const [{ data: summaries }, { data: coefficientRows }] = await Promise.all([
+    supabase
+      .from("monthly_client_summary")
+      .select("*, clients(name, external_ref)")
+      .eq("month", month)
+      .order("margin_percent", { ascending: true }),
+    supabase.from("energy_coefficients").select("*"),
+  ]);
+
+  const coefficients = (coefficientRows ?? []) as EnergyCoefficient[];
+  const methodologySources = coefficients
+    .filter((c) => !c.effective_to || c.effective_to >= month)
+    .map((c) => ({
+      modelFamily: c.model_family,
+      modelIdPattern: c.model_id_pattern,
+      whPerMillionTokens: Number(c.wh_per_million_tokens),
+      overheadFactor: Number(c.overhead_factor),
+      sourceCitation: c.source_citation,
+      notes: c.notes,
+    }));
 
   const rows = (summaries ?? []).filter(
     (r) => Number(r.total_revenue) > 0 || Number(r.total_cost) > 0
@@ -36,6 +60,16 @@ export default async function DashboardPage({
   const blendedMargin = totalRevenue - totalCost;
   const blendedPct = totalRevenue > 0 ? (blendedMargin / totalRevenue) * 100 : null;
   const redFlagCount = rows.filter((r) => r.red_flag).length;
+  const totalEnergyWh = rows.reduce(
+    (s, r) => s + Number(r.total_energy_wh ?? 0),
+    0
+  );
+  const totalRequests = rows.reduce(
+    (s, r) => s + Number(r.request_count ?? 0),
+    0
+  );
+  const energyPerRequest =
+    totalRequests > 0 ? totalEnergyWh / totalRequests : null;
 
   const hasData = rows.length > 0;
   const otherMonths = availableMonths.filter((m) => m !== monthLabel);
@@ -91,7 +125,7 @@ export default async function DashboardPage({
         </div>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <StatCard label="Total MRR" value={formatCurrency(totalRevenue)} />
             <StatCard label="Total AI cost" value={formatCurrency(totalCost)} />
             <StatCard
@@ -105,7 +139,17 @@ export default async function DashboardPage({
               sub={redFlagCount > 0 ? "Needs attention" : "All clear"}
               alert={redFlagCount > 0}
             />
+            <StatCard
+              label="Energy / request (est.)"
+              value={formatEnergyPerRequest(energyPerRequest)}
+              sub={`${formatEnergyWh(totalEnergyWh)} total · Estimated`}
+            />
           </div>
+
+          <MethodologyDisclosure
+            lastUpdated={latestCoefficientUpdatedAt(coefficients)}
+            sources={methodologySources}
+          />
 
           <section>
             <div className="mb-4 flex items-center justify-between">
@@ -130,6 +174,7 @@ export default async function DashboardPage({
                     <th className="px-4 py-3 font-medium">AI cost</th>
                     <th className="px-4 py-3 font-medium">Margin</th>
                     <th className="px-4 py-3 font-medium">Margin %</th>
+                    <th className="px-4 py-3 font-medium">Energy / req (est.)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -137,6 +182,11 @@ export default async function DashboardPage({
                     const name =
                       (row.clients as { name: string } | null)?.name ?? "Unknown";
                     const pct = row.margin_percent as number | null;
+                    const perReq =
+                      row.energy_wh_per_request !== null &&
+                      row.energy_wh_per_request !== undefined
+                        ? Number(row.energy_wh_per_request)
+                        : null;
                     return (
                       <tr
                         key={row.client_id}
@@ -166,6 +216,9 @@ export default async function DashboardPage({
                           className={`px-4 py-3 ${marginColor(pct, row.red_flag)}`}
                         >
                           {formatPercent(pct)}
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted)]">
+                          {formatEnergyPerRequest(perReq)}
                         </td>
                       </tr>
                     );

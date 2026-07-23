@@ -30,13 +30,17 @@ export async function POST(request: Request) {
     .eq("tenant_id", ctx.tenantId);
 
   const { data: pricingRows } = await supabase.from("model_pricing").select("*");
+  const { data: energyCoefficients } = await supabase
+    .from("energy_coefficients")
+    .select("*");
 
   const content = await readUploadText(file);
   const parsed = parseUploadFile(content, file.name);
   const { valid, errors } = validateLogRows(
     parsed.rows,
     clients ?? [],
-    pricingRows ?? []
+    pricingRows ?? [],
+    energyCoefficients ?? []
   );
 
   const { data: batch, error: batchError } = await supabase
@@ -68,6 +72,7 @@ export async function POST(request: Request) {
       input_tokens: row.inputTokens,
       output_tokens: row.outputTokens,
       computed_cost: row.computedCost,
+      computed_energy_wh: row.computedEnergyWh,
       upload_batch_id: batch.id,
       source: parsed.format,
     }));

@@ -163,7 +163,7 @@ export default function SettingsPage() {
       return;
     }
     flash(
-      `Recomputed ${data.recomputedMonths?.length ?? 0} month(s). Check Overview / Red flags.`
+      `Recomputed ${data.recomputedMonths?.length ?? 0} month(s) (margins + energy estimates). Check Overview / Red flags.`
     );
   }
 
@@ -302,7 +302,7 @@ export default function SettingsPage() {
                 onClick={recomputeMargins}
                 className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-medium text-black disabled:opacity-50"
               >
-                Recompute margins
+                Recompute margins & energy
               </button>
             </form>
           ) : (
