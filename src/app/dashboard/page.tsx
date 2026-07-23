@@ -182,15 +182,29 @@ export default async function DashboardPage({
               sub={formatPercent(blendedPct)}
             />
             <StatCard
-              label="Flags"
+              label="Red flags"
               value={String(redFlagCount)}
-              sub={redFlagCount > 0 ? "Needs attention" : "All clear"}
+              sub={
+                redFlagCount > 0
+                  ? "Below margin threshold"
+                  : "All clients clear"
+              }
               alert={redFlagCount > 0}
             />
             <StatCard
               label="Energy / request (est.)"
-              value={formatEnergyPerRequest(energyPerRequest)}
-              sub={`${formatEnergyWh(totalEnergyWh)} total · Estimated`}
+              value={
+                energyPerRequest !== null
+                  ? formatEnergyPerRequest(energyPerRequest)
+                  : needsEnergyBackfill
+                    ? "Pending"
+                    : "—"
+              }
+              sub={
+                needsEnergyBackfill
+                  ? "Recompute in Settings"
+                  : `${formatEnergyWh(totalEnergyWh)} total · Estimated`
+              }
               emphasize
             />
           </div>
@@ -309,20 +323,20 @@ function StatCard({
   alert?: boolean;
   emphasize?: boolean;
 }) {
+  const panelClass = alert
+    ? "brand-panel-alert"
+    : emphasize
+      ? "brand-panel-emphasis"
+      : "brand-panel";
+
   return (
-    <div
-      className={`brand-panel p-5 ${
-        alert
-          ? "border-black bg-black text-white"
-          : emphasize
-            ? "border-2 border-black"
-            : ""
-      }`}
-    >
+    <div className={`${panelClass} p-5`}>
       <p className={`text-sm ${alert ? "text-white/70" : "text-[var(--muted)]"}`}>
         {label}
       </p>
-      <p className="mt-1 text-2xl font-semibold">{value}</p>
+      <p className={`mt-1 text-2xl font-semibold ${alert ? "text-white" : "text-black"}`}>
+        {value}
+      </p>
       {sub && (
         <p className={`mt-1 text-sm ${alert ? "text-white/70" : "text-[var(--muted)]"}`}>
           {sub}
