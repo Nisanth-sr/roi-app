@@ -5,7 +5,11 @@ import {
   inferProvider,
   monthStart,
 } from "@/modules/pricing/engine";
-import { mapLogRow, mapRevenueRow } from "@/modules/uploads/parser";
+import {
+  mapClientRow,
+  mapLogRow,
+  mapRevenueRow,
+} from "@/modules/uploads/parser";
 
 export type ValidatedLogRow = {
   clientId: string;
@@ -23,6 +27,11 @@ export type ValidatedRevenueRow = {
   month: string;
   revenueAmount: number;
   currency: string;
+};
+
+export type ValidatedClientRow = {
+  name: string;
+  externalRef: string | null;
 };
 
 export function resolveClientId(
@@ -210,6 +219,56 @@ export function validateRevenueRows(
       revenueAmount: amount,
       currency: (row.currency || "USD").toUpperCase(),
     });
+  });
+
+  return { valid, errors };
+}
+
+export function validateClientRows(
+  rawRows: Record<string, string>[],
+  existingClients: Client[]
+): { valid: ValidatedClientRow[]; errors: UploadRowError[] } {
+  const valid: ValidatedClientRow[] = [];
+  const errors: UploadRowError[] = [];
+  const seenRefs = new Set<string>();
+  const existingRefs = new Set(
+    existingClients
+      .map((c) => c.external_ref?.trim())
+      .filter((ref): ref is string => Boolean(ref))
+  );
+
+  rawRows.forEach((raw, index) => {
+    const rowNum = index + 2;
+    const row = mapClientRow(raw);
+    const name = row.name?.trim() ?? "";
+    const externalRef = row.external_ref?.trim() || null;
+
+    if (!name) {
+      errors.push({ row: rowNum, field: "name", message: "Missing name" });
+      return;
+    }
+
+    if (externalRef) {
+      if (existingRefs.has(externalRef)) {
+        errors.push({
+          row: rowNum,
+          field: "external_ref",
+          message: `external_ref already exists: ${externalRef}`,
+        });
+        return;
+      }
+      if (seenRefs.has(externalRef)) {
+        errors.push({
+          row: rowNum,
+          field: "external_ref",
+          message: `Duplicate external_ref in file: ${externalRef}`,
+        });
+        return;
+      }
+      seenRefs.add(externalRef);
+    }
+
+    valid.push({ name, externalRef });
   });
 
   return { valid, errors };

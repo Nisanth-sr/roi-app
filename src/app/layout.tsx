@@ -13,8 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI ROI Middleware",
-  description: "Per-client margin visibility for AI wrapper companies",
+  title: "4emet",
+  description: "Per-client AI margin visibility — see which customers are quietly unprofitable",
+  icons: {
+    icon: "/brand/4emet-mark.png",
+  },
 };
 
 export default function RootLayout({
@@ -27,7 +30,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col font-sans">{children}</body>
     </html>
   );
 }

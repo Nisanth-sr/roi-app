@@ -1,5 +1,10 @@
 import type { ModelPricing } from "@/lib/types";
 
+/**
+ * Prices a request from input/output token counts.
+ * `cached_input_price_per_1m` is stored on model_pricing for future use but
+ * unused in MVP — Path B uploads do not include cached-token counts.
+ */
 export function computeRequestCost(
   inputTokens: number,
   outputTokens: number,

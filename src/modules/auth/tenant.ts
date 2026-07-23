@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function ensureTenantForUser(
   supabase: SupabaseClient,
@@ -15,23 +16,29 @@ export async function ensureTenantForUser(
     return { tenantId: existing.tenant_id, created: false };
   }
 
-  const { data: tenant, error: tenantError } = await supabase
+  // Bootstrap must use service role: insert().select() on tenants fails under
+  // user JWT because SELECT RLS requires membership that does not exist yet.
+  const admin = createAdminClient();
+
+  const { data: tenant, error: tenantError } = await admin
     .from("tenants")
     .insert({ name: companyName })
     .select("id")
     .single();
 
   if (tenantError || !tenant) {
-    throw tenantError ?? new Error("Failed to create tenant");
+    throw new Error(tenantError?.message ?? "Failed to create tenant");
   }
 
-  const { error: memberError } = await supabase.from("tenant_members").insert({
+  const { error: memberError } = await admin.from("tenant_members").insert({
     tenant_id: tenant.id,
     user_id: userId,
     role: "owner",
   });
 
-  if (memberError) throw memberError;
+  if (memberError) {
+    throw new Error(memberError.message);
+  }
 
   return { tenantId: tenant.id, created: true };
 }

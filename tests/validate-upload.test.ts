@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Client, ModelPricing } from "@/lib/types";
-import { validateLogRows, validateRevenueRows } from "@/modules/uploads/validate";
+import {
+  validateClientRows,
+  validateLogRows,
+  validateRevenueRows,
+} from "@/modules/uploads/validate";
 
 const clients: Client[] = [
   {
@@ -108,5 +112,63 @@ describe("upload validation", () => {
     expect(errors).toHaveLength(0);
     expect(valid[0].revenueAmount).toBe(100);
     expect(valid[0].month).toBe("2026-06-01");
+  });
+});
+
+describe("client CSV validation", () => {
+  it("accepts valid client rows", () => {
+    const { valid, errors } = validateClientRows(
+      [
+        { name: "Client D", external_ref: "client-d" },
+        { client_name: "Client E", client_id: "client-e" },
+      ],
+      clients
+    );
+    expect(errors).toHaveLength(0);
+    expect(valid).toHaveLength(2);
+    expect(valid[0]).toEqual({ name: "Client D", externalRef: "client-d" });
+    expect(valid[1]).toEqual({ name: "Client E", externalRef: "client-e" });
+  });
+
+  it("fails rows with missing name", () => {
+    const { valid, errors } = validateClientRows(
+      [{ name: "", external_ref: "client-x" }],
+      clients
+    );
+    expect(valid).toHaveLength(0);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].message).toContain("Missing name");
+  });
+
+  it("fails duplicate external_ref against existing clients", () => {
+    const { valid, errors } = validateClientRows(
+      [{ name: "Duplicate A", external_ref: "client-a" }],
+      clients
+    );
+    expect(valid).toHaveLength(0);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].message).toContain("already exists");
+  });
+
+  it("fails duplicate external_ref within the file", () => {
+    const { valid, errors } = validateClientRows(
+      [
+        { name: "One", external_ref: "client-z" },
+        { name: "Two", external_ref: "client-z" },
+      ],
+      clients
+    );
+    expect(valid).toHaveLength(1);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].message).toContain("Duplicate external_ref in file");
+  });
+
+  it("allows rows without external_ref", () => {
+    const { valid, errors } = validateClientRows(
+      [{ name: "No Ref Client" }],
+      clients
+    );
+    expect(errors).toHaveLength(0);
+    expect(valid).toEqual([{ name: "No Ref Client", externalRef: null }]);
   });
 });

@@ -1,15 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
+import { BrandMark } from "@/components/BrandMark";
+import { GoogleAuthButton } from "@/components/GoogleAuthButton";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const oauthError = searchParams.get("error");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    oauthError ? decodeURIComponent(oauthError) : null
+  );
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -34,51 +40,67 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4">
-      <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-8 shadow-sm">
-        <h1 className="text-2xl font-semibold text-zinc-900">Sign in</h1>
-        <p className="mt-2 text-sm text-zinc-500">
-          Access your per-client margin dashboard.
-        </p>
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-zinc-700">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-zinc-700">
-              Password
-            </label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-            />
-          </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-zinc-900 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
-          >
-            {loading ? "Signing in…" : "Sign in"}
-          </button>
-        </form>
-        <p className="mt-4 text-center text-sm text-zinc-500">
-          No account?{" "}
-          <Link href="/signup" className="font-medium text-zinc-900">
-            Sign up
-          </Link>
-        </p>
+    <div className="brand-panel w-full max-w-md p-8">
+      <BrandMark href="/" size="sm" />
+      <h1 className="mt-6 text-2xl font-semibold text-black">Sign in</h1>
+      <p className="mt-2 text-sm text-[var(--muted)]">
+        Access your per-client margin dashboard.
+      </p>
+
+      <div className="mt-6">
+        <GoogleAuthButton label="Continue with Google" />
       </div>
+
+      <div className="my-6 flex items-center gap-3">
+        <div className="h-px flex-1 bg-[var(--border)]" />
+        <span className="text-xs uppercase tracking-wide text-[var(--muted)]">
+          or
+        </span>
+        <div className="h-px flex-1 bg-[var(--border)]" />
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-black">Email</label>
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="brand-input"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-black">Password</label>
+          <input
+            type="password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="brand-input"
+          />
+        </div>
+        {error && <p className="text-sm font-medium text-black">{error}</p>}
+        <button type="submit" disabled={loading} className="brand-btn w-full">
+          {loading ? "Signing in…" : "Sign in"}
+        </button>
+      </form>
+      <p className="mt-4 text-center text-sm text-[var(--muted)]">
+        No account?{" "}
+        <Link href="/signup" className="font-medium text-black underline">
+          Sign up
+        </Link>
+      </p>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <div className="brand-shell flex min-h-screen items-center justify-center px-4">
+      <Suspense fallback={<div className="brand-panel w-full max-w-md p-8" />}>
+        <LoginForm />
+      </Suspense>
     </div>
   );
 }

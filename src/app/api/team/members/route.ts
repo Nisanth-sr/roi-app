@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
-import { requireOwner, isErrorResponse } from "@/lib/api/auth";
+import { getAuthContext, requireOwner, isErrorResponse } from "@/lib/api/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
-  const ctx = await requireOwner();
-  if (isErrorResponse(ctx)) return ctx;
+  const ctx = await getAuthContext();
+  if (!ctx) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -17,7 +19,27 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ members: data });
+  const members = data ?? [];
+  const emailById = new Map<string, string | null>();
+
+  try {
+    const admin = createAdminClient();
+    await Promise.all(
+      members.map(async (m) => {
+        const { data: userData } = await admin.auth.admin.getUserById(m.user_id);
+        emailById.set(m.user_id, userData.user?.email ?? null);
+      })
+    );
+  } catch {
+    // Service role missing in some local setups — still return members without email
+  }
+
+  return NextResponse.json({
+    members: members.map((m) => ({
+      ...m,
+      email: emailById.get(m.user_id) ?? null,
+    })),
+  });
 }
 
 export async function POST(request: Request) {

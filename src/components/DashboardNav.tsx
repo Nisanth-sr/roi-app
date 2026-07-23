@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { BrandMark } from "@/components/BrandMark";
 import { createClient } from "@/lib/supabase/client";
 
 const links = [
@@ -24,31 +25,36 @@ export function DashboardNav() {
   }
 
   return (
-    <header className="border-b border-zinc-200 bg-white">
+    <header className="border-b border-[var(--border)] bg-white">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-        <div className="flex items-center gap-6">
-          <Link href="/dashboard" className="text-lg font-semibold text-zinc-900">
-            AI ROI Middleware
-          </Link>
-          <nav className="flex gap-4 text-sm">
-            {links.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={
-                  pathname === link.href || pathname.startsWith(link.href + "/")
-                    ? "font-medium text-zinc-900"
-                    : "text-zinc-500 hover:text-zinc-900"
-                }
-              >
-                {link.label}
-              </Link>
-            ))}
+        <div className="flex items-center gap-8">
+          <BrandMark href="/dashboard" size="sm" />
+          <nav className="hidden gap-5 text-sm sm:flex">
+            {links.map((link) => {
+              const active =
+                pathname === link.href ||
+                (link.href !== "/dashboard" &&
+                  pathname.startsWith(link.href + "/")) ||
+                (link.href === "/dashboard" && pathname === "/dashboard");
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={
+                    active
+                      ? "border-b-2 border-black pb-0.5 font-medium text-black"
+                      : "text-[var(--muted)] hover:text-black"
+                  }
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
           </nav>
         </div>
         <button
           onClick={signOut}
-          className="text-sm text-zinc-500 hover:text-zinc-900"
+          className="text-sm text-[var(--muted)] hover:text-black"
         >
           Sign out
         </button>

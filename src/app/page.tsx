@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { BrandMark } from "@/components/BrandMark";
 import { getAuthContext } from "@/lib/api/auth";
 
 export default async function HomePage() {
@@ -7,26 +8,22 @@ export default async function HomePage() {
   if (ctx) redirect("/dashboard");
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-50 px-4">
-      <div className="max-w-lg text-center">
-        <h1 className="text-4xl font-bold tracking-tight text-zinc-900">
-          AI ROI Middleware
+    <div className="brand-shell flex min-h-screen flex-col items-center justify-center px-4">
+      <div className="max-w-xl text-center">
+        <div className="flex justify-center">
+          <BrandMark href={null} size="lg" showWordmark={false} />
+        </div>
+        <h1 className="mt-6 text-5xl font-semibold tracking-tight text-black sm:text-6xl">
+          4emet
         </h1>
-        <p className="mt-4 text-lg text-zinc-600">
+        <p className="mt-4 text-lg text-[var(--muted)]">
           See which of your clients are quietly costing more than they pay.
-          Upload your AI logs and revenue — get per-client margin in seconds.
         </p>
-        <div className="mt-8 flex justify-center gap-4">
-          <Link
-            href="/signup"
-            className="rounded-lg bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-zinc-800"
-          >
+        <div className="mt-10 flex justify-center gap-3">
+          <Link href="/signup" className="brand-btn">
             Get started
           </Link>
-          <Link
-            href="/login"
-            className="rounded-lg border border-zinc-300 px-5 py-2.5 text-sm font-medium text-zinc-700 hover:bg-white"
-          >
+          <Link href="/login" className="brand-btn-ghost">
             Sign in
           </Link>
         </div>

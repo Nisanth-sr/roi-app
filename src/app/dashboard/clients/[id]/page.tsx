@@ -28,23 +28,26 @@ export default async function ClientDetailPage({
   return (
     <div className="space-y-8">
       <div>
-        <Link href="/dashboard" className="text-sm text-zinc-500 hover:text-zinc-900">
+        <Link
+          href="/dashboard"
+          className="text-sm text-[var(--muted)] hover:text-black"
+        >
           ← Back to overview
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold text-zinc-900">{client.name}</h1>
+        <h1 className="mt-2 text-2xl font-semibold text-black">{client.name}</h1>
         {client.external_ref && (
-          <p className="text-sm text-zinc-500">Ref: {client.external_ref}</p>
+          <p className="text-sm text-[var(--muted)]">Ref: {client.external_ref}</p>
         )}
       </div>
 
       {!history?.length ? (
-        <div className="rounded-xl border border-dashed border-zinc-300 bg-white p-8 text-center text-sm text-zinc-500">
+        <div className="brand-panel border-dashed p-8 text-center text-sm text-[var(--muted)]">
           No margin history yet. Upload logs and revenue for this client.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+        <div className="brand-panel overflow-hidden">
           <table className="min-w-full text-sm">
-            <thead className="bg-zinc-50 text-left text-zinc-500">
+            <thead className="brand-table-head">
               <tr>
                 <th className="px-4 py-3 font-medium">Month</th>
                 <th className="px-4 py-3 font-medium">Revenue</th>
@@ -57,7 +60,7 @@ export default async function ClientDetailPage({
               {history.map((row) => {
                 const pct = row.margin_percent as number | null;
                 return (
-                  <tr key={row.month} className="border-t border-zinc-100">
+                  <tr key={row.month} className="border-t border-[var(--border)]">
                     <td className="px-4 py-3">{String(row.month).slice(0, 7)}</td>
                     <td className="px-4 py-3">
                       {formatCurrency(Number(row.total_revenue))}
@@ -68,13 +71,9 @@ export default async function ClientDetailPage({
                     <td className="px-4 py-3">
                       {formatCurrency(Number(row.margin))}
                     </td>
-                    <td
-                      className={`px-4 py-3 font-medium ${marginColor(pct, row.red_flag)}`}
-                    >
+                    <td className={`px-4 py-3 ${marginColor(pct, row.red_flag)}`}>
                       {formatPercent(pct)}
-                      {row.red_flag && (
-                        <span className="ml-2 text-xs text-red-600">Red flag</span>
-                      )}
+                      {row.red_flag && <span className="brand-chip">Flag</span>}
                     </td>
                   </tr>
                 );

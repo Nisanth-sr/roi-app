@@ -27,6 +27,17 @@ const REVENUE_HEADER_ALIASES: Record<string, string[]> = {
   period_month: ["period_month", "month", "period"],
 };
 
+const CLIENT_HEADER_ALIASES: Record<string, string[]> = {
+  name: ["name", "client_name", "company"],
+  external_ref: [
+    "external_ref",
+    "client_id",
+    "external_id",
+    "ref",
+    "clientid",
+  ],
+};
+
 export function parseUploadFile(
   content: string,
   filename: string
@@ -82,6 +93,10 @@ export function mapLogRow(row: Record<string, string>) {
 
 export function mapRevenueRow(row: Record<string, string>) {
   return mapRow(row, REVENUE_HEADER_ALIASES);
+}
+
+export function mapClientRow(row: Record<string, string>) {
+  return mapRow(row, CLIENT_HEADER_ALIASES);
 }
 
 export async function readUploadText(file: File): Promise<string> {

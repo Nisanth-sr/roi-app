@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { BrandMark } from "@/components/BrandMark";
+import { GoogleAuthButton } from "@/components/GoogleAuthButton";
+import {
+  COMPANY_NAME_STORAGE_KEY,
+} from "@/lib/auth/google";
 import { createClient } from "@/lib/supabase/client";
 
 export default function SignupPage() {
@@ -17,6 +22,12 @@ export default function SignupPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    if (!companyName.trim()) {
+      setError("Company name is required");
+      setLoading(false);
+      return;
+    }
 
     const supabase = createClient();
     const { data, error: authError } = await supabase.auth.signUp({
@@ -53,16 +64,27 @@ export default function SignupPage() {
     router.refresh();
   }
 
+  function beforeGoogle() {
+    const name = companyName.trim();
+    if (!name) {
+      return "Enter your company name before continuing with Google.";
+    }
+    sessionStorage.setItem(COMPANY_NAME_STORAGE_KEY, name);
+    return null;
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4">
-      <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-8 shadow-sm">
-        <h1 className="text-2xl font-semibold text-zinc-900">Create account</h1>
-        <p className="mt-2 text-sm text-zinc-500">
+    <div className="brand-shell flex min-h-screen items-center justify-center px-4">
+      <div className="brand-panel w-full max-w-md p-8">
+        <BrandMark href="/" size="sm" />
+        <h1 className="mt-6 text-2xl font-semibold text-black">Create account</h1>
+        <p className="mt-2 text-sm text-[var(--muted)]">
           Start tracking per-client AI margins.
         </p>
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+
+        <div className="mt-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-zinc-700">
+            <label className="block text-sm font-medium text-black">
               Company name
             </label>
             <input
@@ -70,21 +92,37 @@ export default function SignupPage() {
               required
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              className="brand-input"
+              placeholder="Acme AI"
             />
           </div>
+          <GoogleAuthButton
+            label="Continue with Google"
+            onBeforeStart={beforeGoogle}
+          />
+        </div>
+
+        <div className="my-6 flex items-center gap-3">
+          <div className="h-px flex-1 bg-[var(--border)]" />
+          <span className="text-xs uppercase tracking-wide text-[var(--muted)]">
+            or
+          </span>
+          <div className="h-px flex-1 bg-[var(--border)]" />
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-zinc-700">Email</label>
+            <label className="block text-sm font-medium text-black">Email</label>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              className="brand-input"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-zinc-700">
+            <label className="block text-sm font-medium text-black">
               Password
             </label>
             <input
@@ -93,21 +131,17 @@ export default function SignupPage() {
               minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              className="brand-input"
             />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-zinc-900 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
-          >
+          {error && <p className="text-sm font-medium text-black">{error}</p>}
+          <button type="submit" disabled={loading} className="brand-btn w-full">
             {loading ? "Creating…" : "Create account"}
           </button>
         </form>
-        <p className="mt-4 text-center text-sm text-zinc-500">
+        <p className="mt-4 text-center text-sm text-[var(--muted)]">
           Already have an account?{" "}
-          <Link href="/login" className="font-medium text-zinc-900">
+          <Link href="/login" className="font-medium text-black underline">
             Sign in
           </Link>
         </p>

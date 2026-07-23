@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 type UploadResponse = {
   batchId: string;
@@ -50,9 +50,10 @@ export default function UploadPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold text-zinc-900">Upload data</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          Upload your AI request logs and client revenue. Margin updates within seconds.
+        <h1 className="text-2xl font-semibold text-black">Upload data</h1>
+        <p className="mt-1 text-sm text-[var(--muted)]">
+          Drag in your AI request logs and client revenue (CSV or JSON). Margin
+          updates within seconds.
         </p>
       </div>
 
@@ -60,6 +61,7 @@ export default function UploadPage() {
         <UploadCard
           title="AI request logs"
           description="CSV or JSON with client_id, request_timestamp, model_id, input_tokens, output_tokens."
+          accept=".csv,.json,text/csv,application/json"
           file={logFile}
           onFileChange={setLogFile}
           onUpload={uploadLogs}
@@ -68,7 +70,8 @@ export default function UploadPage() {
         />
         <UploadCard
           title="Client revenue"
-          description="CSV with client_id, revenue_amount, currency, period_month (YYYY-MM or YYYY-MM-DD)."
+          description="CSV or JSON with client_id, revenue_amount, currency, period_month (YYYY-MM or YYYY-MM-DD)."
+          accept=".csv,.json,text/csv,application/json"
           file={revenueFile}
           onFileChange={setRevenueFile}
           onUpload={uploadRevenue}
@@ -77,22 +80,23 @@ export default function UploadPage() {
         />
       </div>
 
-      <div className="rounded-xl border border-zinc-200 bg-white p-6">
-        <h2 className="font-medium text-zinc-900">First time?</h2>
-        <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-zinc-600">
+      <div className="brand-panel p-6">
+        <h2 className="font-medium text-black">First time?</h2>
+        <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-[var(--muted)]">
           <li>
-            <Link href="/dashboard/clients" className="text-zinc-900 underline">
+            <Link href="/dashboard/clients" className="text-black underline">
               Add your clients
             </Link>{" "}
             with matching external_ref IDs used in your logs.
           </li>
-          <li>Upload AI request logs for the month.</li>
-          <li>Upload revenue for the same period.</li>
+          <li>Upload AI request logs for the month (CSV or JSON).</li>
+          <li>Upload revenue for the same period (CSV or JSON).</li>
           <li>
-            <Link href="/dashboard" className="text-zinc-900 underline">
+            <Link href="/dashboard" className="text-black underline">
               View your dashboard
             </Link>{" "}
-            — margins appear immediately.
+            — it opens the latest month with data (fixtures are{" "}
+            <strong>2026-06</strong>). Use the month picker for other periods.
           </li>
         </ol>
       </div>
@@ -103,6 +107,7 @@ export default function UploadPage() {
 function UploadCard({
   title,
   description,
+  accept,
   file,
   onFileChange,
   onUpload,
@@ -111,45 +116,115 @@ function UploadCard({
 }: {
   title: string;
   description: string;
+  accept: string;
   file: File | null;
   onFileChange: (f: File | null) => void;
   onUpload: () => void;
   loading: boolean;
   result: UploadResponse | null;
 }) {
+  const [dragging, setDragging] = useState(false);
+
+  const pickFile = useCallback(
+    (list: FileList | null) => {
+      const next = list?.[0] ?? null;
+      if (!next) return;
+      const lower = next.name.toLowerCase();
+      if (!lower.endsWith(".csv") && !lower.endsWith(".json")) {
+        return;
+      }
+      onFileChange(next);
+    },
+    [onFileChange]
+  );
+
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-6">
-      <h2 className="font-medium text-zinc-900">{title}</h2>
-      <p className="mt-1 text-sm text-zinc-500">{description}</p>
-      <input
-        type="file"
-        accept=".csv,.json"
-        className="mt-4 block w-full text-sm"
-        onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
-      />
+    <div className="brand-panel p-6">
+      <h2 className="font-medium text-black">{title}</h2>
+      <p className="mt-1 text-sm text-[var(--muted)]">{description}</p>
+
+      <div
+        onDragEnter={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          setDragging(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          pickFile(e.dataTransfer.files);
+        }}
+        className={`mt-4 rounded-lg border-2 border-dashed px-4 py-8 text-center transition-colors ${
+          dragging
+            ? "border-black bg-[var(--surface)]"
+            : "border-[var(--border)] bg-[var(--surface)]"
+        }`}
+      >
+        <p className="text-sm text-[var(--muted)]">
+          {file ? (
+            <span className="font-medium text-black">{file.name}</span>
+          ) : (
+            <>
+              Drop a CSV/JSON file here, or{" "}
+              <label className="cursor-pointer font-medium text-black underline">
+                browse
+                <input
+                  type="file"
+                  accept={accept}
+                  className="sr-only"
+                  onChange={(e) => pickFile(e.target.files)}
+                />
+              </label>
+            </>
+          )}
+        </p>
+        {file && (
+          <button
+            type="button"
+            className="mt-2 text-xs text-[var(--muted)] underline"
+            onClick={() => onFileChange(null)}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
       <button
         onClick={onUpload}
         disabled={!file || loading}
-        className="mt-4 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        className="mt-4 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
       >
         {loading ? "Uploading…" : "Upload"}
       </button>
       {result && (
-        <div className="mt-4 rounded-lg bg-zinc-50 p-4 text-sm">
+        <div className="mt-4 rounded-lg bg-[var(--surface)] p-4 text-sm">
           {result.error ? (
-            <p className="text-red-600">{result.error}</p>
+            <p className="text-black">{result.error}</p>
           ) : (
             <>
-              <p className="text-emerald-700">
+              <p className="text-black">
                 {result.rowCount} rows stored, {result.errorCount} errors
               </p>
               {result.affectedMonths?.length > 0 && (
-                <p className="mt-1 text-zinc-500">
-                  Updated months: {result.affectedMonths.join(", ")}
+                <p className="mt-1 text-[var(--muted)]">
+                  Updated months: {result.affectedMonths.join(", ")} —{" "}
+                  <Link
+                    href={`/dashboard?month=${result.affectedMonths[0].slice(0, 7)}`}
+                    className="font-medium text-black underline"
+                  >
+                    View dashboard for {result.affectedMonths[0].slice(0, 7)}
+                  </Link>
                 </p>
               )}
               {result.errors?.length > 0 && (
-                <ul className="mt-2 max-h-40 overflow-y-auto text-red-600">
+                <ul className="mt-2 max-h-40 overflow-y-auto text-black">
                   {result.errors.slice(0, 20).map((e, i) => (
                     <li key={i}>
                       Row {e.row}: {e.message}

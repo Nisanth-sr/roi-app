@@ -12,10 +12,11 @@ export function formatPercent(value: number | null): string {
   return `${value.toFixed(1)}%`;
 }
 
+/** Black/white margin emphasis — no color palette. */
 export function marginColor(marginPercent: number | null, redFlag: boolean): string {
-  if (redFlag) return "text-red-600";
-  if (marginPercent === null) return "text-zinc-500";
-  if (marginPercent >= 50) return "text-emerald-600";
-  if (marginPercent >= 20) return "text-amber-600";
-  return "text-orange-600";
+  if (redFlag) return "font-semibold text-black";
+  if (marginPercent === null) return "text-[var(--muted)]";
+  if (marginPercent >= 50) return "font-semibold text-black";
+  if (marginPercent >= 20) return "text-black";
+  return "font-medium text-black";
 }

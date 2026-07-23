@@ -1,5 +1,6 @@
 -- Dev seed for model_pricing (verify against live provider pages before pilot)
 -- Illustrative rates from technical-architecture-spec Appendix C (July 2026)
+-- cached_input_price_per_1m intentionally left null — unused in MVP (see pricing engine)
 
 INSERT INTO model_pricing (provider, model_id, input_price_per_1m, output_price_per_1m, effective_from, verified_at, source_url)
 VALUES

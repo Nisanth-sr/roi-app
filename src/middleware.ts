@@ -31,9 +31,21 @@ export async function middleware(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const isAuthPage = path === "/login" || path === "/signup";
-  const isPublic = isAuthPage || path === "/";
+  const isCallback = path === "/auth/callback";
+  const isOnboarding = path === "/onboarding";
+  const isPublic = isAuthPage || path === "/" || isCallback;
 
-  if (!user && !isPublic && (path.startsWith("/dashboard") || path.startsWith("/api"))) {
+  if (!user && isOnboarding) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  if (
+    !user &&
+    !isPublic &&
+    (path.startsWith("/dashboard") || path.startsWith("/api"))
+  ) {
     if (path.startsWith("/api")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -56,6 +68,8 @@ export const config = {
     "/dashboard/:path*",
     "/login",
     "/signup",
+    "/onboarding",
+    "/auth/callback",
     "/api/((?!auth/setup-tenant).*)",
   ],
 };

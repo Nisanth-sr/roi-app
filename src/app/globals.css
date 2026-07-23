@@ -2,7 +2,11 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #0a0a0a;
+  --muted: #737373;
+  --border: #e5e5e5;
+  --surface: #fafafa;
+  --ink: #000000;
 }
 
 @theme inline {
@@ -12,15 +16,133 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: light;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Abstract geometric atmosphere inspired by the 4emet mark */
+.brand-shell {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  background: var(--background);
+  overflow: hidden;
+}
+
+.brand-shell::before,
+.brand-shell::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.brand-shell::before {
+  width: min(42vw, 420px);
+  height: min(70vh, 640px);
+  top: -8%;
+  right: -4%;
+  background: var(--ink);
+  opacity: 0.035;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+.brand-shell::after {
+  width: 48px;
+  height: min(55vh, 480px);
+  bottom: 8%;
+  left: 6%;
+  background: var(--ink);
+  opacity: 0.04;
+  border-radius: 999px;
+}
+
+.brand-shell > * {
+  position: relative;
+  z-index: 1;
+}
+
+.brand-panel {
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+}
+
+.brand-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  background: var(--ink);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.625rem 1.25rem;
+  transition: opacity 0.15s ease;
+}
+
+.brand-btn:hover {
+  opacity: 0.88;
+}
+
+.brand-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.brand-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.625rem 1.25rem;
+  transition: background 0.15s ease;
+}
+
+.brand-btn-ghost:hover {
+  background: var(--surface);
+}
+
+.brand-input {
+  width: 100%;
+  margin-top: 0.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: #fff;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--ink);
+}
+
+.brand-input:focus {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
+.brand-chip {
+  display: inline-block;
+  margin-left: 0.5rem;
+  border-radius: 0.25rem;
+  background: var(--ink);
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #fff;
+}
+
+.brand-table-head {
+  background: var(--surface);
+  text-align: left;
+  color: var(--muted);
 }
