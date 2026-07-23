@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { SampleCsvLink } from "@/components/SampleCsvLink";
 
 type Client = {
   id: string;
@@ -153,6 +154,16 @@ export default function ClientsPage() {
           CSV or JSON with <code className="text-xs">name</code> (required) and{" "}
           <code className="text-xs">external_ref</code> (recommended). Duplicate
           refs are reported as errors; valid rows still import.
+        </p>
+        <p className="mt-2 text-sm">
+          <SampleCsvLink
+            href="/samples/sample-clients.csv"
+            label="Download sample clients CSV"
+          />
+          <span className="text-[var(--muted)]">
+            {" "}
+            — fill in your clients, then upload below.
+          </span>
         </p>
 
         <div

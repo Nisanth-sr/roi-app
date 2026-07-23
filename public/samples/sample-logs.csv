@@ -1,0 +1,4 @@
+client_id,request_timestamp,model_id,input_tokens,output_tokens
+client-a,2026-06-01T10:00:00Z,claude-sonnet-4-6,50000,30000
+client-b,2026-06-02T10:00:00Z,claude-sonnet-4-6,800000,200000
+client-c,2026-06-03T10:00:00Z,claude-sonnet-4-6,5000000,500000

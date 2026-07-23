@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useState } from "react";
+import { SampleCsvLinks } from "@/components/SampleCsvLink";
 
 type UploadResponse = {
   batchId: string;
@@ -55,12 +56,15 @@ export default function UploadPage() {
           Drag in your AI request logs and client revenue (CSV or JSON). Margin
           updates within seconds.
         </p>
+        <SampleCsvLinks clients logs revenue />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <UploadCard
           title="AI request logs"
           description="CSV or JSON with client_id, request_timestamp, model_id, input_tokens, output_tokens."
+          sampleHref="/samples/sample-logs.csv"
+          sampleLabel="Download sample logs CSV"
           accept=".csv,.json,text/csv,application/json"
           file={logFile}
           onFileChange={setLogFile}
@@ -71,6 +75,8 @@ export default function UploadPage() {
         <UploadCard
           title="Client revenue"
           description="CSV or JSON with client_id, revenue_amount, currency, period_month (YYYY-MM or YYYY-MM-DD)."
+          sampleHref="/samples/sample-revenue.csv"
+          sampleLabel="Download sample revenue CSV"
           accept=".csv,.json,text/csv,application/json"
           file={revenueFile}
           onFileChange={setRevenueFile}
@@ -87,16 +93,41 @@ export default function UploadPage() {
             <Link href="/dashboard/clients" className="text-black underline">
               Add your clients
             </Link>{" "}
-            with matching external_ref IDs used in your logs.
+            (or{" "}
+            <a
+              href="/samples/sample-clients.csv"
+              download="sample-clients.csv"
+              className="text-black underline"
+            >
+              download the clients CSV
+            </a>
+            ) with matching external_ref IDs used in your logs.
           </li>
-          <li>Upload AI request logs for the month (CSV or JSON).</li>
-          <li>Upload revenue for the same period (CSV or JSON).</li>
+          <li>
+            Download the{" "}
+            <a
+              href="/samples/sample-logs.csv"
+              download="sample-logs.csv"
+              className="text-black underline"
+            >
+              logs
+            </a>{" "}
+            and{" "}
+            <a
+              href="/samples/sample-revenue.csv"
+              download="sample-revenue.csv"
+              className="text-black underline"
+            >
+              revenue
+            </a>{" "}
+            sample CSVs, replace the example rows with your data, then upload.
+          </li>
           <li>
             <Link href="/dashboard" className="text-black underline">
               View your dashboard
             </Link>{" "}
-            — it opens the latest month with data (fixtures are{" "}
-            <strong>2026-06</strong>). Use the month picker for other periods.
+            — it opens the latest month with data. Use the month picker for other
+            periods.
           </li>
         </ol>
       </div>
@@ -107,6 +138,8 @@ export default function UploadPage() {
 function UploadCard({
   title,
   description,
+  sampleHref,
+  sampleLabel,
   accept,
   file,
   onFileChange,
@@ -116,6 +149,8 @@ function UploadCard({
 }: {
   title: string;
   description: string;
+  sampleHref: string;
+  sampleLabel: string;
   accept: string;
   file: File | null;
   onFileChange: (f: File | null) => void;
@@ -138,10 +173,21 @@ function UploadCard({
     [onFileChange]
   );
 
+  const sampleFilename = sampleHref.split("/").pop() ?? "sample.csv";
+
   return (
     <div className="brand-panel p-6">
       <h2 className="font-medium text-black">{title}</h2>
       <p className="mt-1 text-sm text-[var(--muted)]">{description}</p>
+      <p className="mt-2 text-sm">
+        <a
+          href={sampleHref}
+          download={sampleFilename}
+          className="font-medium text-black underline"
+        >
+          {sampleLabel}
+        </a>
+      </p>
 
       <div
         onDragEnter={(e) => {

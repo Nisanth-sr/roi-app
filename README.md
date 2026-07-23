@@ -93,7 +93,10 @@ Invalid rows are counted and reported — never silently dropped.
 
 ## Fixtures
 
-Sample files for testing: [fixtures/sample-logs.csv](./fixtures/sample-logs.csv), [fixtures/sample-revenue.csv](./fixtures/sample-revenue.csv), [fixtures/sample-clients.csv](./fixtures/sample-clients.csv).
+Sample files for testing (also downloadable in-app from Upload / Clients):
+[public/samples/sample-logs.csv](./public/samples/sample-logs.csv),
+[public/samples/sample-revenue.csv](./public/samples/sample-revenue.csv),
+[public/samples/sample-clients.csv](./public/samples/sample-clients.csv).
 
 ## Deferred (Path A)
 
