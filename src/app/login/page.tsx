@@ -6,7 +6,7 @@ import { Suspense, useState } from "react";
 import { BrandMark } from "@/components/BrandMark";
 import { GoogleAuthButton } from "@/components/GoogleAuthButton";
 import { LoadingButton } from "@/components/LoadingButton";
-import { Spinner } from "@/components/Spinner";
+import { PageLoading } from "@/components/PageLoading";
 import { createClient } from "@/lib/supabase/client";
 
 function LoginForm() {
@@ -107,9 +107,8 @@ export default function LoginPage() {
     <div className="brand-shell flex min-h-screen items-center justify-center px-4">
       <Suspense
         fallback={
-          <div className="brand-panel flex w-full max-w-md items-center justify-center gap-2 p-8 text-sm text-[var(--muted)]">
-            <Spinner />
-            Loading…
+          <div className="w-full max-w-md">
+            <PageLoading label="Loading…" />
           </div>
         }
       >

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { FlashBanner } from "@/components/FlashBanner";
 import { LoadingButton } from "@/components/LoadingButton";
-import { Spinner } from "@/components/Spinner";
+import { PageLoading } from "@/components/PageLoading";
 
 type PricingRow = {
   id: string;
@@ -291,10 +291,7 @@ export default function SettingsPage() {
       />
 
       {pageLoading ? (
-        <div className="brand-panel flex items-center justify-center gap-3 p-12 text-sm text-[var(--muted)]">
-          <Spinner />
-          Loading settings…
-        </div>
+        <PageLoading label="Loading settings…" />
       ) : (
         <>
           {tenant && (

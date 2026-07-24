@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BrandMark } from "@/components/BrandMark";
+import { LoadingButton } from "@/components/LoadingButton";
+import { PageLoading } from "@/components/PageLoading";
 import { COMPANY_NAME_STORAGE_KEY } from "@/lib/auth/google";
 import { createClient } from "@/lib/supabase/client";
 
@@ -80,7 +82,9 @@ export default function OnboardingPage() {
   if (checking) {
     return (
       <div className="brand-shell flex min-h-screen items-center justify-center px-4">
-        <p className="text-sm text-[var(--muted)]">Preparing your workspace…</p>
+        <div className="w-full max-w-md">
+          <PageLoading label="Preparing your workspace…" />
+        </div>
       </div>
     );
   }
@@ -111,9 +115,14 @@ export default function OnboardingPage() {
             />
           </div>
           {error && <p className="text-sm font-medium text-black">{error}</p>}
-          <button type="submit" disabled={loading} className="brand-btn w-full">
-            {loading ? "Creating…" : "Continue to dashboard"}
-          </button>
+          <LoadingButton
+            type="submit"
+            className="w-full"
+            loading={loading}
+            loadingLabel="Creating…"
+          >
+            Continue to dashboard
+          </LoadingButton>
         </form>
       </div>
     </div>

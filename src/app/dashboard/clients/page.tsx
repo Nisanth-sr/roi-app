@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { LoadingButton } from "@/components/LoadingButton";
+import { PageLoading } from "@/components/PageLoading";
 import { SampleCsvLink } from "@/components/SampleCsvLink";
 
 type Client = {
@@ -25,6 +26,7 @@ export default function ClientsPage() {
   const [externalRef, setExternalRef] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvLoading, setCsvLoading] = useState(false);
   const [csvResult, setCsvResult] = useState<UploadResponse | null>(null);
@@ -35,6 +37,7 @@ export default function ClientsPage() {
     const res = await fetch("/api/clients");
     const data = (await res.json()) as { clients: Client[] };
     setClients(data.clients ?? []);
+    setPageLoading(false);
   }
 
   useEffect(() => {
@@ -114,6 +117,10 @@ export default function ClientsPage() {
         </p>
       </div>
 
+      {pageLoading ? (
+        <PageLoading label="Loading clients…" />
+      ) : (
+        <>
       <form
         onSubmit={addClient}
         className="brand-panel p-6"
@@ -324,6 +331,8 @@ export default function ClientsPage() {
           </tbody>
         </table>
       </div>
+        </>
+      )}
     </div>
   );
 }
