@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { BrandMark } from "@/components/BrandMark";
 import { GoogleAuthButton } from "@/components/GoogleAuthButton";
+import { LoadingButton } from "@/components/LoadingButton";
+import { Spinner } from "@/components/Spinner";
 import { createClient } from "@/lib/supabase/client";
 
 function LoginForm() {
@@ -81,9 +83,14 @@ function LoginForm() {
           />
         </div>
         {error && <p className="text-sm font-medium text-black">{error}</p>}
-        <button type="submit" disabled={loading} className="brand-btn w-full">
-          {loading ? "Signing in…" : "Sign in"}
-        </button>
+        <LoadingButton
+          type="submit"
+          className="w-full"
+          loading={loading}
+          loadingLabel="Signing in…"
+        >
+          Sign in
+        </LoadingButton>
       </form>
       <p className="mt-4 text-center text-sm text-[var(--muted)]">
         No account?{" "}
@@ -98,7 +105,14 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <div className="brand-shell flex min-h-screen items-center justify-center px-4">
-      <Suspense fallback={<div className="brand-panel w-full max-w-md p-8" />}>
+      <Suspense
+        fallback={
+          <div className="brand-panel flex w-full max-w-md items-center justify-center gap-2 p-8 text-sm text-[var(--muted)]">
+            <Spinner />
+            Loading…
+          </div>
+        }
+      >
         <LoginForm />
       </Suspense>
     </div>

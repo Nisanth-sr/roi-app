@@ -1,7 +1,32 @@
 import { NextResponse } from "next/server";
 import { getAuthContext, requireOwner, isErrorResponse } from "@/lib/api/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  createAdminClient,
+  SERVICE_ROLE_MISSING_MESSAGE,
+} from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+
+async function findAuthUserByEmail(
+  admin: ReturnType<typeof createAdminClient>,
+  email: string
+) {
+  const normalized = email.toLowerCase();
+  let page = 1;
+  const perPage = 200;
+  const maxPages = 25;
+
+  while (page <= maxPages) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+    const users = data.users ?? [];
+    const match = users.find((u) => u.email?.toLowerCase() === normalized);
+    if (match) return match;
+    if (users.length < perPage) break;
+    page += 1;
+  }
+
+  return null;
+}
 
 export async function GET() {
   const ctx = await getAuthContext();
@@ -55,27 +80,37 @@ export async function POST(request: Request) {
 
   const role = body.role === "owner" ? "owner" : "member";
 
+  let admin: ReturnType<typeof createAdminClient>;
   try {
-    const admin = createAdminClient();
-    const { data: listData, error: listError } =
-      await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    admin = createAdminClient();
+  } catch {
+    return NextResponse.json({ error: SERVICE_ROLE_MISSING_MESSAGE }, { status: 503 });
+  }
 
-    if (listError) {
-      return NextResponse.json({ error: listError.message }, { status: 500 });
-    }
-
-    const user = listData.users.find(
-      (u) => u.email?.toLowerCase() === email
-    );
+  try {
+    let user = await findAuthUserByEmail(admin, email);
+    let invited = false;
 
     if (!user) {
-      return NextResponse.json(
-        {
-          error:
-            "No account found for that email. Ask them to sign up first, then add them again.",
-        },
-        { status: 404 }
-      );
+      const { data: invitedData, error: inviteError } =
+        await admin.auth.admin.inviteUserByEmail(email);
+
+      if (inviteError) {
+        return NextResponse.json(
+          { error: inviteError.message || "Failed to invite user" },
+          { status: 500 }
+        );
+      }
+
+      user = invitedData.user;
+      invited = true;
+
+      if (!user) {
+        return NextResponse.json(
+          { error: "Invite succeeded but no user was returned" },
+          { status: 500 }
+        );
+      }
     }
 
     const supabase = await createClient();
@@ -86,12 +121,35 @@ export async function POST(request: Request) {
     });
 
     if (error) {
+      if (error.code === "23505") {
+        return NextResponse.json(
+          { error: "That user is already a member of this workspace." },
+          { status: 409 }
+        );
+      }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ userId: user.id, role }, { status: 201 });
+    return NextResponse.json(
+      {
+        userId: user.id,
+        role,
+        invited,
+        message: invited
+          ? "Invite sent. They will appear once they accept."
+          : "Member added.",
+      },
+      { status: 201 }
+    );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Invite failed";
+    const message =
+      error instanceof Error ? error.message : "Invite failed";
+    if (message.includes("Missing Supabase admin credentials")) {
+      return NextResponse.json(
+        { error: SERVICE_ROLE_MISSING_MESSAGE },
+        { status: 503 }
+      );
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

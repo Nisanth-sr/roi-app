@@ -98,6 +98,7 @@ body {
   font-weight: 500;
   padding: 0.625rem 1.25rem;
   transition: opacity 0.15s ease;
+  cursor: pointer;
 }
 
 .brand-btn:hover {
@@ -121,10 +122,51 @@ body {
   font-weight: 500;
   padding: 0.625rem 1.25rem;
   transition: background 0.15s ease;
+  cursor: pointer;
 }
 
 .brand-btn-ghost:hover {
   background: var(--surface);
+}
+
+.brand-btn-ghost:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button:not(:disabled),
+a[role="button"],
+summary {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+.progress-indeterminate {
+  height: 0.25rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.progress-indeterminate > span {
+  display: block;
+  height: 100%;
+  width: 40%;
+  border-radius: 999px;
+  background: var(--ink);
+  animation: progress-slide 1.1s ease-in-out infinite;
+}
+
+@keyframes progress-slide {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
 }
 
 .brand-input {

@@ -92,8 +92,12 @@ export default async function DashboardPage({
             Per-client margin for {monthLabel}
           </p>
         </div>
-        <Suspense fallback={null}>
-          <MonthPicker />
+        <Suspense
+          fallback={
+            <span className="text-sm text-[var(--muted)]">Loading period…</span>
+          }
+        >
+          <MonthPicker availableMonths={availableMonths} />
         </Suspense>
       </div>
 

@@ -61,8 +61,12 @@ export default async function RedFlagsPage({
             Clients below your margin threshold ({monthLabel}).
           </p>
         </div>
-        <Suspense fallback={null}>
-          <MonthPicker />
+        <Suspense
+          fallback={
+            <span className="text-sm text-[var(--muted)]">Loading period…</span>
+          }
+        >
+          <MonthPicker availableMonths={availableMonths} />
         </Suspense>
       </div>
 

@@ -2,16 +2,39 @@
 
 import Link from "next/link";
 import { useCallback, useState } from "react";
+import { LoadingButton } from "@/components/LoadingButton";
 import { SampleCsvLinks } from "@/components/SampleCsvLink";
+
+type UploadRowError = { row: number; field?: string; message: string };
 
 type UploadResponse = {
   batchId: string;
   rowCount: number;
   errorCount: number;
-  errors: { row: number; field?: string; message: string }[];
+  errors: UploadRowError[];
   affectedMonths: string[];
   error?: string;
 };
+
+const ERROR_PREVIEW = 10;
+
+function downloadErrorsCsv(errors: UploadRowError[], filename: string) {
+  const header = "row,field,message";
+  const lines = errors.map((e) => {
+    const field = (e.field ?? "").replace(/"/g, '""');
+    const message = e.message.replace(/"/g, '""');
+    return `${e.row},"${field}","${message}"`;
+  });
+  const blob = new Blob([[header, ...lines].join("\n")], {
+    type: "text/csv;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function UploadPage() {
   const [logFile, setLogFile] = useState<File | null>(null);
@@ -71,6 +94,8 @@ export default function UploadPage() {
           onUpload={uploadLogs}
           loading={loading === "logs"}
           result={logResult}
+          onClearResult={() => setLogResult(null)}
+          errorReportName="log-upload-errors.csv"
         />
         <UploadCard
           title="Client revenue"
@@ -83,6 +108,8 @@ export default function UploadPage() {
           onUpload={uploadRevenue}
           loading={loading === "revenue"}
           result={revenueResult}
+          onClearResult={() => setRevenueResult(null)}
+          errorReportName="revenue-upload-errors.csv"
         />
       </div>
 
@@ -146,6 +173,8 @@ function UploadCard({
   onUpload,
   loading,
   result,
+  onClearResult,
+  errorReportName,
 }: {
   title: string;
   description: string;
@@ -157,8 +186,11 @@ function UploadCard({
   onUpload: () => void;
   loading: boolean;
   result: UploadResponse | null;
+  onClearResult: () => void;
+  errorReportName: string;
 }) {
   const [dragging, setDragging] = useState(false);
+  const [errorsExpanded, setErrorsExpanded] = useState(false);
 
   const pickFile = useCallback(
     (list: FileList | null) => {
@@ -169,11 +201,24 @@ function UploadCard({
         return;
       }
       onFileChange(next);
+      onClearResult();
+      setErrorsExpanded(false);
     },
-    [onFileChange]
+    [onFileChange, onClearResult]
   );
 
+  function clearAll() {
+    onFileChange(null);
+    onClearResult();
+    setErrorsExpanded(false);
+  }
+
   const sampleFilename = sampleHref.split("/").pop() ?? "sample.csv";
+  const errors = result?.errors ?? [];
+  const visibleErrors = errorsExpanded
+    ? errors
+    : errors.slice(0, ERROR_PREVIEW);
+  const hiddenCount = Math.max(0, errors.length - ERROR_PREVIEW);
 
   return (
     <div className="brand-panel p-6">
@@ -231,24 +276,34 @@ function UploadCard({
             </>
           )}
         </p>
-        {file && (
+        {(file || result) && (
           <button
             type="button"
-            className="mt-2 text-xs text-[var(--muted)] underline"
-            onClick={() => onFileChange(null)}
+            className="mt-2 cursor-pointer text-xs text-[var(--muted)] underline"
+            onClick={clearAll}
           >
             Clear
           </button>
         )}
       </div>
 
-      <button
+      {loading && (
+        <div className="progress-indeterminate mt-3" aria-hidden>
+          <span />
+        </div>
+      )}
+
+      <LoadingButton
+        type="button"
+        className="mt-4"
         onClick={onUpload}
         disabled={!file || loading}
-        className="mt-4 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        loading={loading}
+        loadingLabel="Uploading…"
       >
-        {loading ? "Uploading…" : "Upload"}
-      </button>
+        Upload
+      </LoadingButton>
+
       {result && (
         <div className="mt-4 rounded-lg bg-[var(--surface)] p-4 text-sm">
           {result.error ? (
@@ -257,6 +312,10 @@ function UploadCard({
             <>
               <p className="text-black">
                 {result.rowCount} rows stored, {result.errorCount} errors
+              </p>
+              <p className="mt-1 text-[var(--muted)]">
+                Fix flagged rows in your file and re-upload. Use Clear to remove
+                the selected file.
               </p>
               {result.affectedMonths?.length > 0 && (
                 <p className="mt-1 text-[var(--muted)]">
@@ -269,17 +328,39 @@ function UploadCard({
                   </Link>
                 </p>
               )}
-              {result.errors?.length > 0 && (
-                <ul className="mt-2 max-h-40 overflow-y-auto text-black">
-                  {result.errors.slice(0, 20).map((e, i) => (
-                    <li key={i}>
-                      Row {e.row}: {e.message}
-                    </li>
-                  ))}
-                  {result.errors.length > 20 && (
-                    <li>…and {result.errors.length - 20} more</li>
+              {errors.length > 0 && (
+                <>
+                  <div className="mt-2 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      className="cursor-pointer text-sm font-medium text-black underline"
+                      onClick={() =>
+                        downloadErrorsCsv(errors, errorReportName)
+                      }
+                    >
+                      Download error report
+                    </button>
+                  </div>
+                  <ul className="mt-2 max-h-56 overflow-y-auto text-black">
+                    {visibleErrors.map((e, i) => (
+                      <li key={`${e.row}-${i}`}>
+                        Row {e.row}
+                        {e.field ? ` (${e.field})` : ""}: {e.message}
+                      </li>
+                    ))}
+                  </ul>
+                  {hiddenCount > 0 && (
+                    <button
+                      type="button"
+                      className="mt-2 cursor-pointer text-sm font-medium text-black underline"
+                      onClick={() => setErrorsExpanded((v) => !v)}
+                    >
+                      {errorsExpanded
+                        ? "See less"
+                        : `See more (${hiddenCount} more)`}
+                    </button>
                   )}
-                </ul>
+                </>
               )}
             </>
           )}

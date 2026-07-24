@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { LoadingButton } from "@/components/LoadingButton";
 import { SampleCsvLink } from "@/components/SampleCsvLink";
 
 type Client = {
@@ -16,6 +17,8 @@ type UploadResponse = {
   error?: string;
 };
 
+const ERROR_PREVIEW = 10;
+
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [name, setName] = useState("");
@@ -26,6 +29,7 @@ export default function ClientsPage() {
   const [csvLoading, setCsvLoading] = useState(false);
   const [csvResult, setCsvResult] = useState<UploadResponse | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [errorsExpanded, setErrorsExpanded] = useState(false);
 
   async function loadClients() {
     const res = await fetch("/api/clients");
@@ -139,13 +143,14 @@ export default function ClientsPage() {
           </div>
         </div>
         {error && <p className="mt-2 text-sm text-black">{error}</p>}
-        <button
+        <LoadingButton
           type="submit"
-          disabled={loading}
-          className="mt-4 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="mt-4"
+          loading={loading}
+          loadingLabel="Adding…"
         >
           Add client
-        </button>
+        </LoadingButton>
       </form>
 
       <section className="brand-panel p-6">
@@ -211,10 +216,16 @@ export default function ClientsPage() {
           {csvFile && (
             <button
               type="button"
-              className="mt-2 text-xs text-[var(--muted)] underline"
+              className="mt-2 cursor-pointer text-xs text-[var(--muted)] underline"
               onClick={() => {
+                if (
+                  !confirm("Clear selected file and import results?")
+                ) {
+                  return;
+                }
                 setCsvFile(null);
                 setCsvResult(null);
+                setErrorsExpanded(false);
               }}
             >
               Clear
@@ -222,14 +233,22 @@ export default function ClientsPage() {
           )}
         </div>
 
-        <button
+        {csvLoading && (
+          <div className="progress-indeterminate mt-3" aria-hidden>
+            <span />
+          </div>
+        )}
+
+        <LoadingButton
           type="button"
+          className="mt-4"
           onClick={uploadCsv}
           disabled={!csvFile || csvLoading}
-          className="mt-4 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          loading={csvLoading}
+          loadingLabel="Importing…"
         >
-          {csvLoading ? "Importing…" : "Import clients"}
-        </button>
+          Import clients
+        </LoadingButton>
 
         {csvResult && (
           <div className="mt-4 rounded-lg bg-[var(--surface)] p-4 text-sm">
@@ -242,16 +261,29 @@ export default function ClientsPage() {
                   errors
                 </p>
                 {csvResult.errors?.length > 0 && (
-                  <ul className="mt-2 max-h-40 overflow-y-auto text-black">
-                    {csvResult.errors.slice(0, 20).map((e, i) => (
-                      <li key={i}>
-                        Row {e.row}: {e.message}
-                      </li>
-                    ))}
-                    {csvResult.errors.length > 20 && (
-                      <li>…and {csvResult.errors.length - 20} more</li>
+                  <>
+                    <ul className="mt-2 max-h-56 overflow-y-auto text-black">
+                      {(errorsExpanded
+                        ? csvResult.errors
+                        : csvResult.errors.slice(0, ERROR_PREVIEW)
+                      ).map((e, i) => (
+                        <li key={i}>
+                          Row {e.row}: {e.message}
+                        </li>
+                      ))}
+                    </ul>
+                    {csvResult.errors.length > ERROR_PREVIEW && (
+                      <button
+                        type="button"
+                        className="mt-2 cursor-pointer text-sm font-medium text-black underline"
+                        onClick={() => setErrorsExpanded((v) => !v)}
+                      >
+                        {errorsExpanded
+                          ? "See less"
+                          : `See more (${csvResult.errors.length - ERROR_PREVIEW} more)`}
+                      </button>
                     )}
-                  </ul>
+                  </>
                 )}
               </>
             )}
