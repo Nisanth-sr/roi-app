@@ -31,6 +31,11 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/login?error=no_session`);
   }
 
+  // Password recovery must reach the reset form even if membership is missing
+  if (next === "/reset-password") {
+    return NextResponse.redirect(`${origin}/reset-password`);
+  }
+
   const { data: membership } = await supabase
     .from("tenant_members")
     .select("tenant_id")

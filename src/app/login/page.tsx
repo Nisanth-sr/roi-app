@@ -13,6 +13,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const oauthError = searchParams.get("error");
+  const resetOk = searchParams.get("reset") === "1";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(
@@ -73,7 +74,21 @@ function LoginForm() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-black">Password</label>
+          <div className="flex items-center justify-between gap-2">
+            <label className="block text-sm font-medium text-black">
+              Password
+            </label>
+            <Link
+              href={
+                email.trim()
+                  ? `/forgot-password?email=${encodeURIComponent(email.trim())}`
+                  : "/forgot-password"
+              }
+              className="text-sm font-medium text-black underline"
+            >
+              Forgot password?
+            </Link>
+          </div>
           <input
             type="password"
             required
@@ -82,6 +97,11 @@ function LoginForm() {
             className="brand-input"
           />
         </div>
+        {resetOk && !error && (
+          <p className="rounded-lg border border-black bg-black px-3 py-2 text-sm text-white">
+            Password updated. Sign in with your new password.
+          </p>
+        )}
         {error && <p className="text-sm font-medium text-black">{error}</p>}
         <LoadingButton
           type="submit"

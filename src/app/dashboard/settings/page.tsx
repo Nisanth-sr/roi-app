@@ -352,11 +352,14 @@ export default function SettingsPage() {
           )}
 
           <section className="brand-panel p-6">
-            <h2 className="font-medium text-black">Team members</h2>
+            <h2 className="flex flex-wrap items-center gap-2 font-medium text-black">
+              Team members
+              <span className="brand-chip !ml-0">Beta</span>
+            </h2>
             <p className="mt-1 text-sm text-[var(--muted)]">
-              Enter a work email to add an existing account, or send an invite if
-              they have not signed up yet (requires service role key on the
-              server).
+              Team invites are in beta. Enter a work email to add an existing
+              account, or send an invite if they have not signed up yet (requires
+              service role key on the server).
             </p>
             <ul className="mt-3 space-y-2 text-sm text-black">
               {members.length === 0 ? (

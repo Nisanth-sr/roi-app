@@ -31,13 +31,23 @@ export async function middleware(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const isAuthPage = path === "/login" || path === "/signup";
+  const isForgotPassword = path === "/forgot-password";
+  const isResetPassword = path === "/reset-password";
   const isCallback = path === "/auth/callback";
   const isOnboarding = path === "/onboarding";
-  const isPublic = isAuthPage || path === "/" || isCallback;
+  const isPublic =
+    isAuthPage || isForgotPassword || path === "/" || isCallback;
 
   if (!user && isOnboarding) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  // Reset form needs a recovery session; send expired links to forgot flow
+  if (!user && isResetPassword) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/forgot-password";
     return NextResponse.redirect(url);
   }
 
@@ -54,7 +64,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Authenticated users stay on reset-password; do not bounce to dashboard
   if (user && isAuthPage) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/dashboard";
+    return NextResponse.redirect(url);
+  }
+
+  if (user && isForgotPassword) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
@@ -68,6 +85,8 @@ export const config = {
     "/dashboard/:path*",
     "/login",
     "/signup",
+    "/forgot-password",
+    "/reset-password",
     "/onboarding",
     "/auth/callback",
     "/api/((?!auth/setup-tenant).*)",

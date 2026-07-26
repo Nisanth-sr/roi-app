@@ -19,7 +19,7 @@ Per-client margin visibility for AI wrapper companies. Upload AI request logs an
 3. Run [supabase/seed.sql](./supabase/seed.sql) to seed `model_pricing` (and energy coefficients if you skipped the seed block in 00002). Verify rates against live provider pages before pilot.
 4. Copy `.env.example` to `.env.local` and fill in your keys.
 5. (Optional) Enable **Google** sign-in: Supabase → Authentication → Providers → Google. In Google Cloud, set the authorized redirect URI to `https://<project-ref>.supabase.co/auth/v1/callback`. Set `NEXT_PUBLIC_SITE_URL` to your app origin (e.g. `http://localhost:3000`).
-
+6. For **password reset**, add `${NEXT_PUBLIC_SITE_URL}/auth/callback` under Supabase → Authentication → URL configuration → Redirect URLs.
 **Existing projects:** if Overview still shows margin cards but no energy (or a “schema not applied” banner), paste and run `00002_energy_per_outcome.sql`, then **Settings → Recompute margins & energy**.
 
 ### 2. Local development
