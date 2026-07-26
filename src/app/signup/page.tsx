@@ -63,7 +63,7 @@ export default function SignupPage() {
     setSuccess(true);
     setLoading(false);
     setTimeout(() => {
-      router.push("/dashboard");
+      router.push("/onboarding");
       router.refresh();
     }, 1500);
   }
@@ -93,7 +93,7 @@ export default function SignupPage() {
             </p>
             <p className="mt-2 font-medium">Account created</p>
             <p className="mt-1 text-sm text-white/70">
-              Taking you to your dashboard…
+              Setting up your workspace…
             </p>
           </div>
         ) : (

@@ -16,11 +16,12 @@ Per-client margin visibility for AI wrapper companies. Upload AI request logs an
 2. Run the migrations in order via the SQL editor:
    - [supabase/migrations/00001_initial_schema.sql](./supabase/migrations/00001_initial_schema.sql)
    - [supabase/migrations/00002_energy_per_outcome.sql](./supabase/migrations/00002_energy_per_outcome.sql) (energy estimates + coefficient seed)
+   - [supabase/migrations/00003_tenant_onboarding_profile.sql](./supabase/migrations/00003_tenant_onboarding_profile.sql) (declared payment gateway + AI models)
 3. Run [supabase/seed.sql](./supabase/seed.sql) to seed `model_pricing` (and energy coefficients if you skipped the seed block in 00002). Verify rates against live provider pages before pilot.
 4. Copy `.env.example` to `.env.local` and fill in your keys.
 5. (Optional) Enable **Google** sign-in: Supabase → Authentication → Providers → Google. In Google Cloud, set the authorized redirect URI to `https://<project-ref>.supabase.co/auth/v1/callback`. Set `NEXT_PUBLIC_SITE_URL` to your app origin (e.g. `http://localhost:3000`).
 6. For **password reset**, add `${NEXT_PUBLIC_SITE_URL}/auth/callback` under Supabase → Authentication → URL configuration → Redirect URLs.
-**Existing projects:** if Overview still shows margin cards but no energy (or a “schema not applied” banner), paste and run `00002_energy_per_outcome.sql`, then **Settings → Recompute margins & energy**.
+**Existing projects:** if Overview still shows margin cards but no energy (or a “schema not applied” banner), paste and run `00002_energy_per_outcome.sql`, then **Settings → Recompute margins & energy**. After `00003`, existing owners are sent to `/onboarding` once to declare their payment gateway and AI models; both are editable later under **Settings → Workspace profile**.
 
 ### 2. Local development
 

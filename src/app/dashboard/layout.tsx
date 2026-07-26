@@ -16,12 +16,21 @@ export default async function DashboardLayout({
 
   const { data: membership } = await supabase
     .from("tenant_members")
-    .select("tenant_id")
+    .select("tenant_id, role, tenants(onboarding_completed_at)")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
 
   if (!membership?.tenant_id) redirect("/onboarding");
+
+  // Only owners can save the profile, so members are never bounced
+  const tenant = membership.tenants as unknown as {
+    onboarding_completed_at: string | null;
+  } | null;
+
+  if (membership.role === "owner" && !tenant?.onboarding_completed_at) {
+    redirect("/onboarding");
+  }
 
   return (
     <div className="brand-shell min-h-screen bg-[var(--surface)]">

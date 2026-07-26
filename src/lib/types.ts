@@ -2,6 +2,11 @@ export type Tenant = {
   id: string;
   name: string;
   red_flag_threshold: number;
+  payment_gateway: string | null;
+  payment_gateway_other: string | null;
+  ai_model_ids: string[];
+  ai_models_other: string[];
+  onboarding_completed_at: string | null;
   created_at: string;
 };
 

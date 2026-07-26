@@ -38,12 +38,20 @@ export async function GET(request: Request) {
 
   const { data: membership } = await supabase
     .from("tenant_members")
-    .select("tenant_id")
+    .select("tenant_id, role, tenants(onboarding_completed_at)")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
 
   if (!membership?.tenant_id) {
+    return NextResponse.redirect(`${origin}/onboarding`);
+  }
+
+  const tenant = membership.tenants as unknown as {
+    onboarding_completed_at: string | null;
+  } | null;
+
+  if (membership.role === "owner" && !tenant?.onboarding_completed_at) {
     return NextResponse.redirect(`${origin}/onboarding`);
   }
 

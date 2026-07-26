@@ -4,6 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import { FlashBanner } from "@/components/FlashBanner";
 import { LoadingButton } from "@/components/LoadingButton";
 import { PageLoading } from "@/components/PageLoading";
+import {
+  EMPTY_PROFILE_FORM,
+  TenantProfileFields,
+  profileFormFromTenant,
+  profileFormToPayload,
+  validateProfileForm,
+  type ProfileFormState,
+} from "@/components/TenantProfileFields";
+import { aiModelLabel, paymentGatewayLabel } from "@/lib/onboarding-options";
 
 type PricingRow = {
   id: string;
@@ -35,6 +44,11 @@ type TenantSettings = {
   id: string;
   name: string;
   red_flag_threshold: number;
+  payment_gateway: string | null;
+  payment_gateway_other: string | null;
+  ai_model_ids: string[];
+  ai_models_other: string[];
+  onboarding_completed_at: string | null;
 };
 
 export default function SettingsPage() {
@@ -44,6 +58,8 @@ export default function SettingsPage() {
   const [tenant, setTenant] = useState<TenantSettings | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
   const [thresholdInput, setThresholdInput] = useState("20");
+  const [profileForm, setProfileForm] =
+    useState<ProfileFormState>(EMPTY_PROFILE_FORM);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
@@ -61,7 +77,7 @@ export default function SettingsPage() {
   const [pageLoading, setPageLoading] = useState(true);
   const [rollingBackId, setRollingBackId] = useState<string | null>(null);
   const [action, setAction] = useState<
-    "threshold" | "recompute" | "invite" | "pricing" | null
+    "threshold" | "recompute" | "invite" | "pricing" | "profile" | null
   >(null);
 
   const loadData = useCallback(async () => {
@@ -79,6 +95,7 @@ export default function SettingsPage() {
       };
       setTenant(data.tenant);
       setThresholdInput(String(data.tenant.red_flag_threshold));
+      setProfileForm(profileFormFromTenant(data.tenant));
       setIsOwner(data.role === "owner");
     }
 
@@ -166,6 +183,37 @@ export default function SettingsPage() {
       setThresholdInput(String(data.tenant.red_flag_threshold));
     }
     flash("Threshold saved. Recompute margins to refresh red flags.");
+  }
+
+  async function saveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    const invalid = validateProfileForm(profileForm);
+    if (invalid) {
+      flash(invalid, true);
+      return;
+    }
+    setSaving(true);
+    setAction("profile");
+    const res = await fetch("/api/tenant/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(profileFormToPayload(profileForm)),
+    });
+    const data = (await res.json()) as {
+      error?: string;
+      tenant?: TenantSettings;
+    };
+    setSaving(false);
+    setAction(null);
+    if (!res.ok) {
+      flash(data.error ?? "Failed to save workspace profile", true);
+      return;
+    }
+    if (data.tenant) {
+      setTenant(data.tenant);
+      setProfileForm(profileFormFromTenant(data.tenant));
+    }
+    flash("Workspace profile saved.");
   }
 
   async function recomputeMargins() {
@@ -294,6 +342,55 @@ export default function SettingsPage() {
         <PageLoading label="Loading settings…" />
       ) : (
         <>
+          {tenant && (
+            <section className="brand-panel p-6">
+              <h2 className="font-medium text-black">Workspace profile</h2>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                How you bill your customers and which AI models you run.
+                {isOwner
+                  ? " Declared for reporting context only — it does not change pricing, uploads, or energy estimates."
+                  : " Only owners can change these values."}
+              </p>
+              {isOwner ? (
+                <form onSubmit={saveProfile} className="mt-4 space-y-6">
+                  <TenantProfileFields
+                    value={profileForm}
+                    onChange={setProfileForm}
+                    disabled={saving}
+                  />
+                  <LoadingButton
+                    type="submit"
+                    loading={saving && action === "profile"}
+                    loadingLabel="Saving…"
+                    disabled={saving}
+                  >
+                    Save profile
+                  </LoadingButton>
+                </form>
+              ) : (
+                <dl className="mt-4 space-y-3 text-sm">
+                  <div>
+                    <dt className="text-[var(--muted)]">Payment gateway</dt>
+                    <dd className="font-medium text-black">
+                      {tenant.payment_gateway === "other"
+                        ? tenant.payment_gateway_other || "Other"
+                        : paymentGatewayLabel(tenant.payment_gateway)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[var(--muted)]">AI models</dt>
+                    <dd className="font-medium text-black">
+                      {[
+                        ...(tenant.ai_model_ids ?? []).map(aiModelLabel),
+                        ...(tenant.ai_models_other ?? []),
+                      ].join(", ") || "—"}
+                    </dd>
+                  </div>
+                </dl>
+              )}
+            </section>
+          )}
+
           {tenant && (
             <section className="brand-panel p-6">
               <h2 className="font-medium text-black">Red-flag threshold</h2>
