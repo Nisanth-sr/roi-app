@@ -115,6 +115,22 @@ export type UploadResult = {
   errorCount: number;
   errors: UploadRowError[];
   affectedMonths: string[];
+  /** Set when a native payment gateway export was detected and normalized. */
+  gateway?: GatewayImportSummary;
+};
+
+export type GatewayImportSummary = {
+  id: string;
+  label: string;
+  amountUnit: "major" | "minor";
+  sourceRowCount: number;
+  aggregatedRowCount: number;
+  skippedRowCount: number;
+  totalAmount: number;
+  currencies: string[];
+  createdClients: string[];
+  /** Declared gateway in Settings when it differs from the detected format. */
+  declaredGatewayMismatch: string | null;
 };
 
 export type DashboardClientRow = MonthlyClientSummary & {

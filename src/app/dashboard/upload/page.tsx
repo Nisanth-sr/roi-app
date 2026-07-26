@@ -1,9 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import Papa from "papaparse";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { LoadingButton } from "@/components/LoadingButton";
-import { SampleCsvLinks } from "@/components/SampleCsvLink";
+import { SampleCsvLinks, sampleCsvHref } from "@/components/SampleCsvLink";
+import { aiModelLabel } from "@/lib/onboarding-options";
+import type { GatewayImportSummary } from "@/lib/types";
+import { GATEWAY_ADAPTERS, detectAdapter } from "@/modules/uploads/gateways";
 
 type UploadRowError = { row: number; field?: string; message: string };
 
@@ -13,6 +17,7 @@ type UploadResponse = {
   errorCount: number;
   errors: UploadRowError[];
   affectedMonths: string[];
+  gateway?: GatewayImportSummary;
   error?: string;
 };
 
@@ -36,12 +41,69 @@ function downloadErrorsCsv(errors: UploadRowError[], filename: string) {
   URL.revokeObjectURL(url);
 }
 
+/** Reads just the header row so we can name the gateway before uploading. */
+async function sniffHeaders(file: File): Promise<string[]> {
+  const text = await file.slice(0, 64 * 1024).text();
+
+  if (file.name.toLowerCase().endsWith(".json")) {
+    try {
+      const parsed = JSON.parse(text) as unknown;
+      const first = Array.isArray(parsed) ? parsed[0] : parsed;
+      return first && typeof first === "object" ? Object.keys(first) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  const result = Papa.parse<Record<string, string>>(text, {
+    header: true,
+    preview: 1,
+    skipEmptyLines: true,
+    transformHeader: (h) => h.trim().toLowerCase(),
+  });
+
+  return result.meta.fields ?? [];
+}
+
 export default function UploadPage() {
   const [logFile, setLogFile] = useState<File | null>(null);
   const [revenueFile, setRevenueFile] = useState<File | null>(null);
   const [logResult, setLogResult] = useState<UploadResponse | null>(null);
   const [revenueResult, setRevenueResult] = useState<UploadResponse | null>(null);
   const [loading, setLoading] = useState<"logs" | "revenue" | null>(null);
+  const [declaredModels, setDeclaredModels] = useState<string[] | null>(null);
+  const [declaredGateway, setDeclaredGateway] = useState<string | null>(null);
+  const [detectedGateway, setDetectedGateway] = useState<string | null>(null);
+  const [createMissingClients, setCreateMissingClients] = useState(true);
+
+  useEffect(() => {
+    async function loadProfile() {
+      const res = await fetch("/api/tenant/settings");
+      if (!res.ok) {
+        setDeclaredModels([]);
+        return;
+      }
+      const data = (await res.json()) as {
+        tenant: { ai_model_ids?: string[]; payment_gateway?: string | null };
+      };
+      setDeclaredModels(data.tenant.ai_model_ids ?? []);
+      setDeclaredGateway(data.tenant.payment_gateway ?? null);
+    }
+    loadProfile();
+  }, []);
+
+  const handleRevenueFile = useCallback(
+    async (file: File | null) => {
+      setRevenueFile(file);
+      setDetectedGateway(null);
+      if (!file) return;
+
+      const headers = await sniffHeaders(file);
+      const adapter = detectAdapter(headers, declaredGateway);
+      setDetectedGateway(adapter?.id ?? "standard");
+    },
+    [declaredGateway]
+  );
 
   async function uploadLogs() {
     if (!logFile) return;
@@ -64,12 +126,23 @@ export default function UploadPage() {
 
     const form = new FormData();
     form.append("file", revenueFile);
+    form.append("createMissingClients", createMissingClients ? "true" : "false");
 
     const res = await fetch("/api/uploads/revenue", { method: "POST", body: form });
     const data = (await res.json()) as UploadResponse;
     setRevenueResult(data);
     setLoading(null);
   }
+
+  const detectedLabel =
+    detectedGateway === null
+      ? null
+      : detectedGateway === "standard"
+        ? "Standard format — columns will be used as-is."
+        : `Detected ${
+            GATEWAY_ADAPTERS.find((a) => a.id === detectedGateway)?.label ??
+            detectedGateway
+          } export — settled rows will be grouped by customer and month.`;
 
   return (
     <div className="space-y-8">
@@ -86,7 +159,7 @@ export default function UploadPage() {
         <UploadCard
           title="AI request logs"
           description="CSV or JSON with client_id, request_timestamp, model_id, input_tokens, output_tokens."
-          sampleHref="/samples/sample-logs.csv"
+          sampleHref={sampleCsvHref("logs")}
           sampleLabel="Download sample logs CSV"
           accept=".csv,.json,text/csv,application/json"
           file={logFile}
@@ -96,20 +169,39 @@ export default function UploadPage() {
           result={logResult}
           onClearResult={() => setLogResult(null)}
           errorReportName="log-upload-errors.csv"
+          note={
+            declaredModels === null
+              ? "Loading your declared models…"
+              : declaredModels.length > 0
+                ? `Your sample uses: ${declaredModels.map(aiModelLabel).join(", ")}.`
+                : "Add the models you use under Settings → Workspace profile to personalize the sample."
+          }
         />
         <UploadCard
           title="Client revenue"
-          description="CSV or JSON with client_id, revenue_amount, currency, period_month (YYYY-MM or YYYY-MM-DD)."
-          sampleHref="/samples/sample-revenue.csv"
+          description="Upload a raw export from Stripe, Paddle, Chargebee, or Lemon Squeezy — or a CSV with client_id, revenue_amount, currency, period_month."
+          sampleHref={sampleCsvHref("revenue")}
           sampleLabel="Download sample revenue CSV"
           accept=".csv,.json,text/csv,application/json"
           file={revenueFile}
-          onFileChange={setRevenueFile}
+          onFileChange={handleRevenueFile}
           onUpload={uploadRevenue}
           loading={loading === "revenue"}
           result={revenueResult}
           onClearResult={() => setRevenueResult(null)}
           errorReportName="revenue-upload-errors.csv"
+          note={detectedLabel}
+          extraControls={
+            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-black">
+              <input
+                type="checkbox"
+                checked={createMissingClients}
+                onChange={(e) => setCreateMissingClients(e.target.checked)}
+                className="cursor-pointer"
+              />
+              Create missing clients automatically
+            </label>
+          }
         />
       </div>
 
@@ -117,37 +209,24 @@ export default function UploadPage() {
         <h2 className="font-medium text-black">First time?</h2>
         <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-[var(--muted)]">
           <li>
-            <Link href="/dashboard/clients" className="text-black underline">
-              Add your clients
-            </Link>{" "}
-            (or{" "}
-            <a
-              href="/samples/sample-clients.csv"
-              download="sample-clients.csv"
-              className="text-black underline"
-            >
-              download the clients CSV
-            </a>
-            ) with matching external_ref IDs used in your logs.
+            Export revenue straight from your payment gateway (Stripe Payments
+            export, Paddle Reports, Chargebee Invoices, Lemon Squeezy Orders) and
+            drop the file in — no reformatting needed. Clients are created from
+            the export automatically.
           </li>
           <li>
             Download the{" "}
-            <a
-              href="/samples/sample-logs.csv"
-              download="sample-logs.csv"
-              className="text-black underline"
-            >
-              logs
+            <a href={sampleCsvHref("logs")} className="text-black underline">
+              logs sample
             </a>{" "}
-            and{" "}
-            <a
-              href="/samples/sample-revenue.csv"
-              download="sample-revenue.csv"
-              className="text-black underline"
-            >
-              revenue
-            </a>{" "}
-            sample CSVs, replace the example rows with your data, then upload.
+            — it is pre-filled with your clients and declared models. Replace the
+            token counts with your real usage, then upload.
+          </li>
+          <li>
+            <Link href="/dashboard/clients" className="text-black underline">
+              Review your clients
+            </Link>{" "}
+            so gateway customers map to the right names.
           </li>
           <li>
             <Link href="/dashboard" className="text-black underline">
@@ -158,6 +237,43 @@ export default function UploadPage() {
           </li>
         </ol>
       </div>
+    </div>
+  );
+}
+
+function GatewaySummary({ gateway }: { gateway: GatewayImportSummary }) {
+  return (
+    <div className="mt-2 space-y-1 text-[var(--muted)]">
+      <p className="text-black">
+        {gateway.label} export: {gateway.sourceRowCount} source rows collapsed
+        into {gateway.aggregatedRowCount} client-months.
+      </p>
+      <p>
+        Total {gateway.totalAmount.toLocaleString()}{" "}
+        {gateway.currencies.join(" / ") || "USD"} — amounts read as{" "}
+        {gateway.amountUnit === "minor" ? "cents" : "whole units"}. Check this
+        against your gateway dashboard.
+      </p>
+      {gateway.skippedRowCount > 0 && (
+        <p>
+          {gateway.skippedRowCount} rows skipped (unpaid, refunded, or
+          incomplete). Refunds are not netted out.
+        </p>
+      )}
+      {gateway.createdClients.length > 0 && (
+        <p>
+          Created {gateway.createdClients.length} client(s):{" "}
+          {gateway.createdClients.slice(0, 5).join(", ")}
+          {gateway.createdClients.length > 5 ? "…" : ""}
+        </p>
+      )}
+      {gateway.declaredGatewayMismatch && (
+        <p className="text-black">
+          Note: your workspace is set to {gateway.declaredGatewayMismatch} but
+          this file looks like {gateway.label}. It was imported as{" "}
+          {gateway.label}.
+        </p>
+      )}
     </div>
   );
 }
@@ -175,6 +291,8 @@ function UploadCard({
   result,
   onClearResult,
   errorReportName,
+  note,
+  extraControls,
 }: {
   title: string;
   description: string;
@@ -188,6 +306,8 @@ function UploadCard({
   result: UploadResponse | null;
   onClearResult: () => void;
   errorReportName: string;
+  note?: string | null;
+  extraControls?: ReactNode;
 }) {
   const [dragging, setDragging] = useState(false);
   const [errorsExpanded, setErrorsExpanded] = useState(false);
@@ -213,7 +333,6 @@ function UploadCard({
     setErrorsExpanded(false);
   }
 
-  const sampleFilename = sampleHref.split("/").pop() ?? "sample.csv";
   const errors = result?.errors ?? [];
   const visibleErrors = errorsExpanded
     ? errors
@@ -225,11 +344,7 @@ function UploadCard({
       <h2 className="font-medium text-black">{title}</h2>
       <p className="mt-1 text-sm text-[var(--muted)]">{description}</p>
       <p className="mt-2 text-sm">
-        <a
-          href={sampleHref}
-          download={sampleFilename}
-          className="font-medium text-black underline"
-        >
+        <a href={sampleHref} className="font-medium text-black underline">
           {sampleLabel}
         </a>
       </p>
@@ -287,6 +402,9 @@ function UploadCard({
         )}
       </div>
 
+      {note && <p className="mt-3 text-sm text-[var(--muted)]">{note}</p>}
+      {extraControls}
+
       {loading && (
         <div className="progress-indeterminate mt-3" aria-hidden>
           <span />
@@ -313,10 +431,14 @@ function UploadCard({
               <p className="text-black">
                 {result.rowCount} rows stored, {result.errorCount} errors
               </p>
-              <p className="mt-1 text-[var(--muted)]">
-                Fix flagged rows in your file and re-upload. Use Clear to remove
-                the selected file.
-              </p>
+              {result.gateway ? (
+                <GatewaySummary gateway={result.gateway} />
+              ) : (
+                <p className="mt-1 text-[var(--muted)]">
+                  Fix flagged rows in your file and re-upload. Use Clear to
+                  remove the selected file.
+                </p>
+              )}
               {result.affectedMonths?.length > 0 && (
                 <p className="mt-1 text-[var(--muted)]">
                   Updated months: {result.affectedMonths.join(", ")} —{" "}
@@ -344,7 +466,7 @@ function UploadCard({
                   <ul className="mt-2 max-h-56 overflow-y-auto text-black">
                     {visibleErrors.map((e, i) => (
                       <li key={`${e.row}-${i}`}>
-                        Row {e.row}
+                        {e.row > 0 ? `Row ${e.row}` : "Import"}
                         {e.field ? ` (${e.field})` : ""}: {e.message}
                       </li>
                     ))}

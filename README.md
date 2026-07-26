@@ -35,9 +35,10 @@ Open [http://localhost:3000](http://localhost:3000).
 ### 3. First-use flow
 
 1. Sign up with company name (email/password or **Continue with Google**).
-2. Add clients (manually or CSV import on **Clients**; use `external_ref` matching IDs in your log exports).
-3. Upload AI logs (CSV/JSON) and revenue (CSV/JSON) from **Upload**.
-4. View per-client margins on the **Overview** dashboard.
+2. Declare your payment gateway and AI models during onboarding (editable later under **Settings → Workspace profile**).
+3. Upload revenue from **Upload** — drop in a raw Stripe/Paddle/Chargebee/Lemon Squeezy export, or a CSV in the internal format. Clients are created from the export automatically.
+4. Upload AI logs using the pre-filled sample from **Upload** (it already lists your declared models and client refs).
+5. View per-client margins on the **Overview** dashboard.
 
 ## Scripts
 
@@ -53,7 +54,8 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ```
 POST   /api/uploads/logs
-POST   /api/uploads/revenue
+POST   /api/uploads/revenue        internal CSV or a native gateway export
+GET    /api/samples/:type          logs | revenue | clients — per-tenant sample CSV
 GET    /api/clients
 POST   /api/clients
 POST   /api/clients/upload         multipart CSV/JSON → clients
@@ -79,6 +81,40 @@ POST   /api/dashboard/recompute    (owner — refresh rollups after threshold ch
 
 Invalid rows are counted and reported — never silently dropped.
 
+### Payment gateway exports (revenue)
+
+The revenue upload also accepts a raw export from a supported gateway with no
+reformatting. The format is detected from the file's column headers, settled
+rows are grouped into one figure per client and month, and customers missing
+from **Clients** are created automatically (toggle on the upload card). Where to
+export from:
+
+- **Stripe** — Dashboard → Payments → date filter → Export. Amounts are whole
+  units; rows are kept when status is paid/succeeded and not fully refunded.
+- **Paddle** — Reports → Transactions → Generate report, then download the
+  emailed CSV. `grand_total` is read as minor units (cents); status must be
+  completed, paid, or billed.
+- **Chargebee** — Settings → Import & Export Data → Export Data → Invoices, or
+  Logs → Transactions filtered to Success. `amount paid` is read as minor units.
+- **Lemon Squeezy** — Orders → Export (CSV is emailed to the store owner).
+  Revenue is `subtotal` minus `discount_total` in minor units.
+
+Caveats, surfaced in the upload result so they are easy to verify:
+
+- **Refunds and adjustments are not netted out.** Fully refunded charges are
+  skipped, but partial refunds and credit notes are not subtracted.
+- **Tax is excluded for merchant-of-record gateways** (Lemon Squeezy) since the
+  tax collected is not your revenue.
+- **One currency per client-month.** A client billed in two currencies in the
+  same month is reported as an error instead of being summed — filter the export
+  by currency and re-upload.
+- **Amount units are assumed per gateway, never guessed from the data.** The
+  result panel prints the computed total and the unit used, so a mismatch is
+  visible immediately.
+
+Customers are matched to clients by gateway customer id, then email, then name,
+against `clients.external_ref` / `id` / `name`.
+
 ## Security
 
 - Row-Level Security on all tenant-scoped tables from first migration.
@@ -94,7 +130,13 @@ Invalid rows are counted and reported — never silently dropped.
 
 ## Fixtures
 
-Sample files for testing (also downloadable in-app from Upload / Clients):
+In-app sample downloads (Upload / Clients) come from `GET /api/samples/:type`
+and are generated per workspace: the logs sample uses the AI models declared in
+**Settings → Workspace profile** and your real client `external_ref`s, so it can
+be filled in and uploaded without editing headers. Models entered as free-text
+"other" are left out because they have no `model_pricing` row.
+
+Static copies for tests and docs:
 [public/samples/sample-logs.csv](./public/samples/sample-logs.csv),
 [public/samples/sample-revenue.csv](./public/samples/sample-revenue.csv),
 [public/samples/sample-clients.csv](./public/samples/sample-clients.csv).

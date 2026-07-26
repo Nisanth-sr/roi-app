@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { LoadingButton } from "@/components/LoadingButton";
 import { PageLoading } from "@/components/PageLoading";
-import { SampleCsvLink } from "@/components/SampleCsvLink";
+import { SampleCsvLink, sampleCsvHref } from "@/components/SampleCsvLink";
 
 type Client = {
   id: string;
@@ -169,7 +169,7 @@ export default function ClientsPage() {
         </p>
         <p className="mt-2 text-sm">
           <SampleCsvLink
-            href="/samples/sample-clients.csv"
+            href={sampleCsvHref("clients")}
             label="Download sample clients CSV"
           />
           <span className="text-[var(--muted)]">

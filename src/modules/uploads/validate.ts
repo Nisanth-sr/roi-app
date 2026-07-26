@@ -59,6 +59,22 @@ export function resolveClientId(
   return byName?.id ?? null;
 }
 
+/**
+ * Gateway exports identify customers by id, email, or name depending on the
+ * provider, so each candidate is tried in order against the clients table.
+ */
+export function resolveClientIdFromCandidates(
+  candidates: string[],
+  clients: Client[]
+): string | null {
+  for (const candidate of candidates) {
+    if (!candidate?.trim()) continue;
+    const match = resolveClientId(candidate, clients);
+    if (match) return match;
+  }
+  return null;
+}
+
 export function validateLogRows(
   rawRows: Record<string, string>[],
   clients: Client[],

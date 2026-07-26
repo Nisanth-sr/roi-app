@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Client, EnergyCoefficient, ModelPricing } from "@/lib/types";
 import {
+  resolveClientIdFromCandidates,
   validateClientRows,
   validateLogRows,
   validateRevenueRows,
@@ -152,6 +153,24 @@ describe("upload validation", () => {
     expect(errors).toHaveLength(0);
     expect(valid[0].revenueAmount).toBe(100);
     expect(valid[0].month).toBe("2026-06-01");
+  });
+});
+
+describe("candidate client resolution", () => {
+  it("falls through candidates until one matches", () => {
+    expect(
+      resolveClientIdFromCandidates(["cus_unknown", "client-b"], clients)
+    ).toBe("uuid-b");
+  });
+
+  it("matches on name when ids and emails miss", () => {
+    expect(
+      resolveClientIdFromCandidates(["cus_x", "nobody@test", "Client A"], clients)
+    ).toBe("uuid-a");
+  });
+
+  it("returns null when nothing matches", () => {
+    expect(resolveClientIdFromCandidates(["cus_x", ""], clients)).toBeNull();
   });
 });
 
