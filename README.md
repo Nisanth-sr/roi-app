@@ -73,6 +73,8 @@ POST   /api/dashboard/recompute    (owner — refresh rollups after threshold ch
 
 ## Upload formats
 
+**Full pilot how-to:** [How to export payment revenue and AI request logs](./Knowledge/how-to-export-logs.md) — step-by-step gateway exports, client-tagged AI logs, upload, and troubleshooting.
+
 **Logs (CSV/JSON):** `client_id`, `request_timestamp`, `model_id`, `input_tokens`, `output_tokens`
 
 **Revenue (CSV/JSON):** `client_id`, `revenue_amount`, `currency`, `period_month`
@@ -86,7 +88,8 @@ Invalid rows are counted and reported — never silently dropped.
 The revenue upload also accepts a raw export from a supported gateway with no
 reformatting. The format is detected from the file's column headers, settled
 rows are grouped into one figure per client and month, and customers missing
-from **Clients** are created automatically (toggle on the upload card). Where to
+from **Clients** are created automatically (toggle on the upload card). Detailed
+steps: [export guide](./Knowledge/how-to-export-logs.md#1-payment-gateway-exports-revenue). Where to
 export from:
 
 - **Stripe** — Dashboard → Payments → date filter → Export. Amounts are whole
@@ -149,6 +152,7 @@ Live proxy, job queue, API gateway, and provider connectors are **not** in this 
 
 Product and architecture docs live in [`Knowledge/`](./Knowledge/):
 
+- [How to export payment revenue and AI request logs](./Knowledge/how-to-export-logs.md) (pilot-facing)
 - [Founder decision brief](./Knowledge/founder-decision-brief.md)
 - [PRD — upload & dashboard](./Knowledge/prd-upload-dashboard-flow.md)
 - [Technical architecture spec](./Knowledge/technical-architecture-spec.md)

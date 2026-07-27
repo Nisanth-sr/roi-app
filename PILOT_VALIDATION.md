@@ -1,6 +1,6 @@
 # Pilot validation notes (Weeks 11–12 buffer)
 
-Use this checklist when onboarding real pilots. Complete [WEEK0_CHECKLIST.md](./WEEK0_CHECKLIST.md) first (DPA + sample log + pricing verify).
+Use this checklist when onboarding real pilots. Complete [WEEK0_CHECKLIST.md](./WEEK0_CHECKLIST.md) first (DPA + sample log + pricing verify). Share [Knowledge/how-to-export-logs.md](./Knowledge/how-to-export-logs.md) so pilots know how to export revenue and client-tagged AI logs.
 
 ## Assumptions to validate
 

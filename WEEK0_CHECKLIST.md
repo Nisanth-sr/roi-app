@@ -6,7 +6,7 @@ These items are **not** engineering tasks. Complete in parallel with engineering
 
 | # | Item | Owner | Status | Notes / link |
 |---|---|---|---|---|
-| W0-1 | **Pilot log export:** Email first pilot — *"Can you send me a sample AI request log export with client tags right now?"* | Founder | [ ] Open | Paste file name / date received below |
+| W0-1 | **Pilot log export:** Email first pilot — *"Can you send me a sample AI request log export with client tags right now?"* Point them at [Knowledge/how-to-export-logs.md](./Knowledge/how-to-export-logs.md) for expected columns and gateway revenue steps. | Founder | [ ] Open | Paste file name / date received below |
 | W0-2 | **DPA legal review:** Engage a lawyer for a Data Processing Agreement before loading any real pilot revenue/usage data | Founder / legal | [ ] Open | Counsel: ____ · Signed date: ____ |
 
 **Hard gate:** Do not load real pilot data until **W0-2** is signed. Synthetic fixtures (`fixtures/`) are fine without a DPA.
