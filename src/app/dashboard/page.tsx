@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import {
+  ClientsMarginTable,
+  type ClientMarginRow,
+} from "@/components/ClientsMarginTable";
 import { MethodologyDisclosure } from "@/components/MethodologyDisclosure";
 import { MonthPicker } from "@/components/MonthPicker";
 import { resolveDashboardMonth } from "@/lib/dashboard-month";
@@ -9,7 +13,6 @@ import {
   formatEnergyPerRequest,
   formatEnergyWh,
   formatPercent,
-  marginColor,
 } from "@/lib/format";
 import type { EnergyCoefficient } from "@/lib/types";
 import { createClient } from "@/lib/supabase/server";
@@ -82,6 +85,29 @@ export default async function DashboardPage({
     totalRequests === 0;
 
   const hasData = rows.length > 0;
+
+  const tableRows: ClientMarginRow[] = rows.map((row) => {
+    const name =
+      (row.clients as { name: string } | null)?.name ?? "Unknown";
+    const perReq =
+      row.energy_wh_per_request !== null &&
+      row.energy_wh_per_request !== undefined
+        ? Number(row.energy_wh_per_request)
+        : Number(row.request_count) > 0
+          ? Number(row.total_energy_wh) / Number(row.request_count)
+          : null;
+    return {
+      clientId: row.client_id as string,
+      name,
+      redFlag: Boolean(row.red_flag),
+      totalRevenue: Number(row.total_revenue),
+      totalCost: Number(row.total_cost),
+      margin: Number(row.margin),
+      marginPercent: row.margin_percent as number | null,
+      energyWhPerRequest: perReq,
+      totalEnergyWh: Number(row.total_energy_wh ?? 0),
+    };
+  });
 
   return (
     <div className="space-y-8">
@@ -232,81 +258,7 @@ export default async function DashboardPage({
                 </Link>
               )}
             </div>
-            <div className="brand-panel overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className="brand-table-head">
-                  <tr>
-                    <th className="px-4 py-3 font-medium">Client</th>
-                    <th className="px-4 py-3 font-medium">Revenue</th>
-                    <th className="px-4 py-3 font-medium">AI cost</th>
-                    <th className="px-4 py-3 font-medium">Margin</th>
-                    <th className="px-4 py-3 font-medium">Margin %</th>
-                    <th className="px-4 py-3 font-medium text-black">
-                      Energy / req
-                    </th>
-                    <th className="px-4 py-3 font-medium text-black">
-                      Total energy
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => {
-                    const name =
-                      (row.clients as { name: string } | null)?.name ?? "Unknown";
-                    const pct = row.margin_percent as number | null;
-                    const perReq =
-                      row.energy_wh_per_request !== null &&
-                      row.energy_wh_per_request !== undefined
-                        ? Number(row.energy_wh_per_request)
-                        : Number(row.request_count) > 0
-                          ? Number(row.total_energy_wh) / Number(row.request_count)
-                          : null;
-                    const totalWh = Number(row.total_energy_wh ?? 0);
-                    return (
-                      <tr
-                        key={row.client_id}
-                        className="border-t border-[var(--border)]"
-                      >
-                        <td className="px-4 py-3">
-                          <Link
-                            href={`/dashboard/clients/${row.client_id}`}
-                            className="font-medium text-black hover:underline"
-                          >
-                            {name}
-                            {row.red_flag && (
-                              <span className="brand-chip">Flag</span>
-                            )}
-                          </Link>
-                        </td>
-                        <td className="px-4 py-3">
-                          {formatCurrency(Number(row.total_revenue))}
-                        </td>
-                        <td className="px-4 py-3">
-                          {formatCurrency(Number(row.total_cost))}
-                        </td>
-                        <td className="px-4 py-3">
-                          {formatCurrency(Number(row.margin))}
-                        </td>
-                        <td
-                          className={`px-4 py-3 ${marginColor(pct, row.red_flag)}`}
-                        >
-                          {formatPercent(pct)}
-                        </td>
-                        <td className="px-4 py-3 font-semibold text-black">
-                          {formatEnergyPerRequest(perReq)}
-                        </td>
-                        <td className="px-4 py-3 font-semibold text-black">
-                          {formatEnergyWh(totalWh)}
-                          <span className="ml-1 text-xs font-normal text-[var(--muted)]">
-                            est.
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <ClientsMarginTable key={monthLabel} rows={tableRows} />
           </section>
         </>
       )}

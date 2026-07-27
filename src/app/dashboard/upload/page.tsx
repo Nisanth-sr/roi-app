@@ -150,7 +150,13 @@ export default function UploadPage() {
         <h1 className="text-2xl font-semibold text-black">Upload data</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
           Drag in your AI request logs and client revenue (CSV or JSON). Margin
-          updates within seconds.
+          updates within seconds.{" "}
+          <Link
+            href="/dashboard/help/export"
+            className="font-medium text-black underline"
+          >
+            How to export revenue &amp; AI logs
+          </Link>
         </p>
         <SampleCsvLinks clients logs revenue />
       </div>
@@ -207,6 +213,17 @@ export default function UploadPage() {
 
       <div className="brand-panel p-6">
         <h2 className="font-medium text-black">First time?</h2>
+        <p className="mt-2 text-sm text-[var(--muted)]">
+          Step-by-step for Stripe, Paddle, Chargebee, Lemon Squeezy, and
+          client-tagged AI logs:{" "}
+          <Link
+            href="/dashboard/help/export"
+            className="font-medium text-black underline"
+          >
+            How to export revenue &amp; AI logs
+          </Link>
+          .
+        </p>
         <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-[var(--muted)]">
           <li>
             Export revenue straight from your payment gateway (Stripe Payments

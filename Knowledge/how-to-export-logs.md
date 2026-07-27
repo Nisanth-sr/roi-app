@@ -166,6 +166,10 @@ Use [PILOT_VALIDATION.md](../PILOT_VALIDATION.md) when onboarding a real pilot.
 
 ---
 
+## In-app
+
+Signed-in tenants can read this guide at **Upload → How to export revenue & AI logs** (`/dashboard/help/export`).
+
 ## Related docs
 
 - [README — Upload formats](../README.md#upload-formats)
