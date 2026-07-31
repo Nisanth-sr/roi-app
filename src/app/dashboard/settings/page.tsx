@@ -412,8 +412,7 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-2xl font-semibold text-black">Settings</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Account password, team, red-flag threshold, upload history, and model
-          pricing
+          Team, red-flag threshold, upload history, and model pricing
           {pageLoading ? "." : isOwner ? " (owners can edit)." : "."}
         </p>
       </div>
@@ -432,55 +431,57 @@ export default function SettingsPage() {
         <PageLoading label="Loading settings…" />
       ) : (
         <>
-          <section className="brand-panel p-6">
-            <h2 className="font-medium text-black">Account password</h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              Set or replace the password for your own login. Supabase Auth
-              stores the hash — useful if you signed up with Google or never set
-              a password in the dashboard.
-            </p>
-            <form
-              onSubmit={saveAccountPassword}
-              className="mt-4 grid gap-3 sm:max-w-md"
-            >
-              <div>
-                <label className="block text-sm font-medium text-black">
-                  New password
-                </label>
-                <input
-                  type="password"
-                  required
-                  minLength={MIN_PASSWORD_LENGTH}
-                  autoComplete="new-password"
-                  value={accountPassword}
-                  onChange={(e) => setAccountPassword(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-black">
-                  Confirm password
-                </label>
-                <input
-                  type="password"
-                  required
-                  minLength={MIN_PASSWORD_LENGTH}
-                  autoComplete="new-password"
-                  value={accountPasswordConfirm}
-                  onChange={(e) => setAccountPasswordConfirm(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm"
-                />
-              </div>
-              <LoadingButton
-                type="submit"
-                loading={saving && action === "password"}
-                loadingLabel="Saving…"
-                disabled={saving}
+          {isOwner && (
+            <section className="brand-panel p-6">
+              <h2 className="font-medium text-black">Account password</h2>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                Owners only. Set or replace the password for your own login.
+                Supabase Auth stores the hash — useful if you signed up with
+                Google or never set a password in the dashboard.
+              </p>
+              <form
+                onSubmit={saveAccountPassword}
+                className="mt-4 grid gap-3 sm:max-w-md"
               >
-                Save password
-              </LoadingButton>
-            </form>
-          </section>
+                <div>
+                  <label className="block text-sm font-medium text-black">
+                    New password
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    minLength={MIN_PASSWORD_LENGTH}
+                    autoComplete="new-password"
+                    value={accountPassword}
+                    onChange={(e) => setAccountPassword(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-black">
+                    Confirm password
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    minLength={MIN_PASSWORD_LENGTH}
+                    autoComplete="new-password"
+                    value={accountPasswordConfirm}
+                    onChange={(e) => setAccountPasswordConfirm(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm"
+                  />
+                </div>
+                <LoadingButton
+                  type="submit"
+                  loading={saving && action === "password"}
+                  loadingLabel="Saving…"
+                  disabled={saving}
+                >
+                  Save password
+                </LoadingButton>
+              </form>
+            </section>
+          )}
 
           {tenant && (
             <section className="brand-panel p-6">
