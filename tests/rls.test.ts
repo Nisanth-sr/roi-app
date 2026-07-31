@@ -12,7 +12,17 @@ const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const anonKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY;
 
-const rlsEnabled = Boolean(url && serviceKey && anonKey);
+/** CI and local builds often set placeholder env vars so Next can compile. */
+function isPlaceholder(value: string | undefined): boolean {
+  if (!value) return true;
+  return /placeholder/i.test(value);
+}
+
+const rlsEnabled =
+  Boolean(url && serviceKey && anonKey) &&
+  !isPlaceholder(url) &&
+  !isPlaceholder(serviceKey) &&
+  !isPlaceholder(anonKey);
 
 describe.skipIf(!rlsEnabled)("RLS cross-tenant isolation", () => {
   it("tenant A cannot read tenant B clients", async () => {
