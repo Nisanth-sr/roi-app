@@ -30,7 +30,14 @@ type TenantProfileResponse = {
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const [companyName, setCompanyName] = useState("");
+  const [companyName, setCompanyName] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return sessionStorage.getItem(COMPANY_NAME_STORAGE_KEY) ?? "";
+    } catch {
+      return "";
+    }
+  });
   const [needsTenant, setNeedsTenant] = useState(false);
   const [needsName, setNeedsName] = useState(false);
   const [profile, setProfile] = useState<ProfileFormState>(EMPTY_PROFILE_FORM);
@@ -39,9 +46,6 @@ export default function OnboardingPage() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    const stored = sessionStorage.getItem(COMPANY_NAME_STORAGE_KEY);
-    if (stored) setCompanyName(stored);
-
     async function checkExisting() {
       const supabase = createClient();
       const {

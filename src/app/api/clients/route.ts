@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAuthContext, isErrorResponse } from "@/lib/api/auth";
+import { getAuthContext } from "@/lib/api/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {

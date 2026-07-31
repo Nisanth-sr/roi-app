@@ -121,7 +121,10 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    loadData();
+    // Defer so the effect body does not synchronously set state (react-hooks/set-state-in-effect).
+    queueMicrotask(() => {
+      void loadData();
+    });
   }, [loadData]);
 
   function flash(msg: string, isError = false) {
