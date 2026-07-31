@@ -7,6 +7,7 @@ import { LoadingButton } from "@/components/LoadingButton";
 import { SampleCsvLinks, sampleCsvHref } from "@/components/SampleCsvLink";
 import { aiModelLabel } from "@/lib/onboarding-options";
 import type { GatewayImportSummary } from "@/lib/types";
+import { uploadWithProgress } from "@/lib/upload-with-progress";
 import { GATEWAY_ADAPTERS, detectAdapter } from "@/modules/uploads/gateways";
 
 type UploadRowError = { row: number; field?: string; message: string };
@@ -21,7 +22,11 @@ type UploadResponse = {
   error?: string;
 };
 
+type UploadPhase = "uploading" | "processing";
+
 const ERROR_PREVIEW = 10;
+const LEAVE_CONFIRM =
+  "Upload in progress. Leaving now may interrupt it. Leave anyway?";
 
 function downloadErrorsCsv(errors: UploadRowError[], filename: string) {
   const header = "row,field,message";
@@ -71,6 +76,8 @@ export default function UploadPage() {
   const [logResult, setLogResult] = useState<UploadResponse | null>(null);
   const [revenueResult, setRevenueResult] = useState<UploadResponse | null>(null);
   const [loading, setLoading] = useState<"logs" | "revenue" | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadPhase, setUploadPhase] = useState<UploadPhase | null>(null);
   const [declaredModels, setDeclaredModels] = useState<string[] | null>(null);
   const [declaredGateway, setDeclaredGateway] = useState<string | null>(null);
   const [detectedGateway, setDetectedGateway] = useState<string | null>(null);
@@ -92,6 +99,51 @@ export default function UploadPage() {
     loadProfile();
   }, []);
 
+  // Warn on browser refresh/close while an upload is in flight.
+  useEffect(() => {
+    if (!loading) return;
+
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault();
+      e.returnValue = "";
+    }
+
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [loading]);
+
+  // Confirm before following in-app nav links while uploading.
+  useEffect(() => {
+    if (!loading) return;
+
+    function onClickCapture(e: MouseEvent) {
+      const target = e.target;
+      if (!(target instanceof Element)) return;
+      const anchor = target.closest("a[href]");
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+
+      const href = anchor.getAttribute("href");
+      if (!href || href.startsWith("#")) return;
+
+      // Same-page or external absolute URLs that aren't internal app nav.
+      try {
+        const url = new URL(href, window.location.origin);
+        if (url.origin !== window.location.origin) return;
+        if (url.pathname === window.location.pathname) return;
+      } catch {
+        return;
+      }
+
+      if (!window.confirm(LEAVE_CONFIRM)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }
+
+    document.addEventListener("click", onClickCapture, true);
+    return () => document.removeEventListener("click", onClickCapture, true);
+  }, [loading]);
+
   const handleRevenueFile = useCallback(
     async (file: File | null) => {
       setRevenueFile(file);
@@ -105,33 +157,105 @@ export default function UploadPage() {
     [declaredGateway]
   );
 
+  function clearUploadState() {
+    setLoading(null);
+    setUploadProgress(0);
+    setUploadPhase(null);
+  }
+
   async function uploadLogs() {
     if (!logFile) return;
     setLoading("logs");
+    setUploadProgress(0);
+    setUploadPhase("uploading");
     setLogResult(null);
 
     const form = new FormData();
     form.append("file", logFile);
 
-    const res = await fetch("/api/uploads/logs", { method: "POST", body: form });
-    const data = (await res.json()) as UploadResponse;
-    setLogResult(data);
-    setLoading(null);
+    try {
+      const { ok, data } = await uploadWithProgress<UploadResponse>(
+        "/api/uploads/logs",
+        form,
+        (percent) => {
+          setUploadProgress(percent);
+          if (percent >= 100) setUploadPhase("processing");
+        }
+      );
+      setUploadPhase("processing");
+      if (!ok && !data.error) {
+        setLogResult({
+          ...data,
+          error: data.error ?? "Upload failed. Please try again.",
+          batchId: data.batchId ?? "",
+          rowCount: data.rowCount ?? 0,
+          errorCount: data.errorCount ?? 0,
+          errors: data.errors ?? [],
+          affectedMonths: data.affectedMonths ?? [],
+        });
+      } else {
+        setLogResult(data);
+      }
+    } catch {
+      setLogResult({
+        batchId: "",
+        rowCount: 0,
+        errorCount: 0,
+        errors: [],
+        affectedMonths: [],
+        error: "Network error during upload. Please try again.",
+      });
+    } finally {
+      clearUploadState();
+    }
   }
 
   async function uploadRevenue() {
     if (!revenueFile) return;
     setLoading("revenue");
+    setUploadProgress(0);
+    setUploadPhase("uploading");
     setRevenueResult(null);
 
     const form = new FormData();
     form.append("file", revenueFile);
     form.append("createMissingClients", createMissingClients ? "true" : "false");
 
-    const res = await fetch("/api/uploads/revenue", { method: "POST", body: form });
-    const data = (await res.json()) as UploadResponse;
-    setRevenueResult(data);
-    setLoading(null);
+    try {
+      const { ok, data } = await uploadWithProgress<UploadResponse>(
+        "/api/uploads/revenue",
+        form,
+        (percent) => {
+          setUploadProgress(percent);
+          if (percent >= 100) setUploadPhase("processing");
+        }
+      );
+      setUploadPhase("processing");
+      if (!ok && !data.error) {
+        setRevenueResult({
+          ...data,
+          error: data.error ?? "Upload failed. Please try again.",
+          batchId: data.batchId ?? "",
+          rowCount: data.rowCount ?? 0,
+          errorCount: data.errorCount ?? 0,
+          errors: data.errors ?? [],
+          affectedMonths: data.affectedMonths ?? [],
+        });
+      } else {
+        setRevenueResult(data);
+      }
+    } catch {
+      setRevenueResult({
+        batchId: "",
+        rowCount: 0,
+        errorCount: 0,
+        errors: [],
+        affectedMonths: [],
+        error: "Network error during upload. Please try again.",
+      });
+    } finally {
+      clearUploadState();
+    }
   }
 
   const detectedLabel =
@@ -172,6 +296,8 @@ export default function UploadPage() {
           onFileChange={setLogFile}
           onUpload={uploadLogs}
           loading={loading === "logs"}
+          progress={loading === "logs" ? uploadProgress : 0}
+          phase={loading === "logs" ? uploadPhase : null}
           result={logResult}
           onClearResult={() => setLogResult(null)}
           errorReportName="log-upload-errors.csv"
@@ -193,6 +319,8 @@ export default function UploadPage() {
           onFileChange={handleRevenueFile}
           onUpload={uploadRevenue}
           loading={loading === "revenue"}
+          progress={loading === "revenue" ? uploadProgress : 0}
+          phase={loading === "revenue" ? uploadPhase : null}
           result={revenueResult}
           onClearResult={() => setRevenueResult(null)}
           errorReportName="revenue-upload-errors.csv"
@@ -203,6 +331,7 @@ export default function UploadPage() {
                 type="checkbox"
                 checked={createMissingClients}
                 onChange={(e) => setCreateMissingClients(e.target.checked)}
+                disabled={loading === "revenue"}
                 className="cursor-pointer"
               />
               Create missing clients automatically
@@ -305,6 +434,8 @@ function UploadCard({
   onFileChange,
   onUpload,
   loading,
+  progress,
+  phase,
   result,
   onClearResult,
   errorReportName,
@@ -320,6 +451,8 @@ function UploadCard({
   onFileChange: (f: File | null) => void;
   onUpload: () => void;
   loading: boolean;
+  progress: number;
+  phase: UploadPhase | null;
   result: UploadResponse | null;
   onClearResult: () => void;
   errorReportName: string;
@@ -331,6 +464,7 @@ function UploadCard({
 
   const pickFile = useCallback(
     (list: FileList | null) => {
+      if (loading) return;
       const next = list?.[0] ?? null;
       if (!next) return;
       const lower = next.name.toLowerCase();
@@ -341,10 +475,11 @@ function UploadCard({
       onClearResult();
       setErrorsExpanded(false);
     },
-    [onFileChange, onClearResult]
+    [onFileChange, onClearResult, loading]
   );
 
   function clearAll() {
+    if (loading) return;
     onFileChange(null);
     onClearResult();
     setErrorsExpanded(false);
@@ -355,6 +490,20 @@ function UploadCard({
     ? errors
     : errors.slice(0, ERROR_PREVIEW);
   const hiddenCount = Math.max(0, errors.length - ERROR_PREVIEW);
+
+  const progressLabel =
+    phase === "processing"
+      ? "Processing…"
+      : phase === "uploading"
+        ? `Uploading… ${progress}%`
+        : null;
+
+  const buttonLabel =
+    phase === "processing"
+      ? "Processing…"
+      : phase === "uploading"
+        ? "Uploading…"
+        : undefined;
 
   return (
     <div className="brand-panel p-6">
@@ -369,11 +518,11 @@ function UploadCard({
       <div
         onDragEnter={(e) => {
           e.preventDefault();
-          setDragging(true);
+          if (!loading) setDragging(true);
         }}
         onDragOver={(e) => {
           e.preventDefault();
-          setDragging(true);
+          if (!loading) setDragging(true);
         }}
         onDragLeave={(e) => {
           e.preventDefault();
@@ -382,13 +531,13 @@ function UploadCard({
         onDrop={(e) => {
           e.preventDefault();
           setDragging(false);
-          pickFile(e.dataTransfer.files);
+          if (!loading) pickFile(e.dataTransfer.files);
         }}
         className={`mt-4 rounded-lg border-2 border-dashed px-4 py-8 text-center transition-colors ${
           dragging
             ? "border-black bg-[var(--surface)]"
             : "border-[var(--border)] bg-[var(--surface)]"
-        }`}
+        } ${loading ? "pointer-events-none opacity-70" : ""}`}
       >
         <p className="text-sm text-[var(--muted)]">
           {file ? (
@@ -402,13 +551,14 @@ function UploadCard({
                   type="file"
                   accept={accept}
                   className="sr-only"
+                  disabled={loading}
                   onChange={(e) => pickFile(e.target.files)}
                 />
               </label>
             </>
           )}
         </p>
-        {(file || result) && (
+        {(file || result) && !loading && (
           <button
             type="button"
             className="mt-2 cursor-pointer text-xs text-[var(--muted)] underline"
@@ -423,8 +573,39 @@ function UploadCard({
       {extraControls}
 
       {loading && (
-        <div className="progress-indeterminate mt-3" aria-hidden>
-          <span />
+        <div
+          className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-black"
+          role="alert"
+        >
+          Please don&apos;t refresh the page or switch tabs until this upload
+          finishes.
+        </div>
+      )}
+
+      {loading && (
+        <div className="mt-3">
+          <div className="mb-1 flex items-center justify-between text-xs text-[var(--muted)]">
+            <span>{progressLabel}</span>
+            {phase === "uploading" && (
+              <span aria-hidden>{progress}%</span>
+            )}
+          </div>
+          {phase === "processing" ? (
+            <div className="progress-indeterminate" aria-hidden>
+              <span />
+            </div>
+          ) : (
+            <div
+              className="progress-determinate"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={progress}
+              aria-label="Upload progress"
+            >
+              <span style={{ width: `${progress}%` }} />
+            </div>
+          )}
         </div>
       )}
 
@@ -434,7 +615,7 @@ function UploadCard({
         onClick={onUpload}
         disabled={!file || loading}
         loading={loading}
-        loadingLabel="Uploading…"
+        loadingLabel={buttonLabel}
       >
         Upload
       </LoadingButton>
