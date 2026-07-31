@@ -177,11 +177,12 @@ export default function UploadPage() {
       const { ok, data } = await uploadWithProgress<UploadResponse>(
         "/api/uploads/logs",
         form,
-        (percent) => {
+        ({ phase, percent }) => {
+          setUploadPhase(phase);
           setUploadProgress(percent);
-          if (percent >= 100) setUploadPhase("processing");
         }
       );
+      setUploadProgress(100);
       setUploadPhase("processing");
       if (!ok && !data.error) {
         setLogResult({
@@ -206,6 +207,8 @@ export default function UploadPage() {
         error: "Network error during upload. Please try again.",
       });
     } finally {
+      setUploadProgress(100);
+      await new Promise((r) => setTimeout(r, 350));
       clearUploadState();
     }
   }
@@ -225,11 +228,12 @@ export default function UploadPage() {
       const { ok, data } = await uploadWithProgress<UploadResponse>(
         "/api/uploads/revenue",
         form,
-        (percent) => {
+        ({ phase, percent }) => {
+          setUploadPhase(phase);
           setUploadProgress(percent);
-          if (percent >= 100) setUploadPhase("processing");
         }
       );
+      setUploadProgress(100);
       setUploadPhase("processing");
       if (!ok && !data.error) {
         setRevenueResult({
@@ -254,6 +258,8 @@ export default function UploadPage() {
         error: "Network error during upload. Please try again.",
       });
     } finally {
+      setUploadProgress(100);
+      await new Promise((r) => setTimeout(r, 350));
       clearUploadState();
     }
   }
@@ -493,16 +499,16 @@ function UploadCard({
 
   const progressLabel =
     phase === "processing"
-      ? "Processing…"
+      ? `Processing… ${progress}%`
       : phase === "uploading"
         ? `Uploading… ${progress}%`
         : null;
 
   const buttonLabel =
     phase === "processing"
-      ? "Processing…"
+      ? `Processing… ${progress}%`
       : phase === "uploading"
-        ? "Uploading…"
+        ? `Uploading… ${progress}%`
         : undefined;
 
   return (
@@ -586,26 +592,18 @@ function UploadCard({
         <div className="mt-3">
           <div className="mb-1 flex items-center justify-between text-xs text-[var(--muted)]">
             <span>{progressLabel}</span>
-            {phase === "uploading" && (
-              <span aria-hidden>{progress}%</span>
-            )}
+            <span aria-hidden>{progress}%</span>
           </div>
-          {phase === "processing" ? (
-            <div className="progress-indeterminate" aria-hidden>
-              <span />
-            </div>
-          ) : (
-            <div
-              className="progress-determinate"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={progress}
-              aria-label="Upload progress"
-            >
-              <span style={{ width: `${progress}%` }} />
-            </div>
-          )}
+          <div
+            className="progress-determinate"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={progress}
+            aria-label="Upload progress"
+          >
+            <span style={{ width: `${progress}%` }} />
+          </div>
         </div>
       )}
 
