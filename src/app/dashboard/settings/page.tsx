@@ -13,6 +13,9 @@ import {
   type ProfileFormState,
 } from "@/components/TenantProfileFields";
 import { aiModelLabel, paymentGatewayLabel } from "@/lib/onboarding-options";
+import { createClient } from "@/lib/supabase/client";
+
+const MIN_PASSWORD_LENGTH = 8;
 
 type PricingRow = {
   id: string;
@@ -77,8 +80,20 @@ export default function SettingsPage() {
   const [pageLoading, setPageLoading] = useState(true);
   const [rollingBackId, setRollingBackId] = useState<string | null>(null);
   const [action, setAction] = useState<
-    "threshold" | "recompute" | "invite" | "pricing" | "profile" | null
+    | "threshold"
+    | "recompute"
+    | "invite"
+    | "pricing"
+    | "profile"
+    | "password"
+    | "member-password"
+    | null
   >(null);
+  const [accountPassword, setAccountPassword] = useState("");
+  const [accountPasswordConfirm, setAccountPasswordConfirm] = useState("");
+  const [passwordUserId, setPasswordUserId] = useState<string | null>(null);
+  const [memberPassword, setMemberPassword] = useState("");
+  const [memberPasswordConfirm, setMemberPasswordConfirm] = useState("");
 
   const loadData = useCallback(async () => {
     setError(null);
@@ -160,6 +175,77 @@ export default function SettingsPage() {
     setInviteEmail("");
     flash(data.message ?? (data.invited ? "Invite sent." : "Member added."));
     loadData();
+  }
+
+  async function saveAccountPassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (accountPassword.length < MIN_PASSWORD_LENGTH) {
+      flash(
+        `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
+        true
+      );
+      return;
+    }
+    if (accountPassword !== accountPasswordConfirm) {
+      flash("Passwords do not match.", true);
+      return;
+    }
+
+    setSaving(true);
+    setAction("password");
+    const supabase = createClient();
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: accountPassword,
+    });
+    setSaving(false);
+    setAction(null);
+
+    if (updateError) {
+      flash(updateError.message, true);
+      return;
+    }
+
+    setAccountPassword("");
+    setAccountPasswordConfirm("");
+    flash("Password saved. You can sign in with email and this password.");
+  }
+
+  async function saveMemberPassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (!passwordUserId) return;
+
+    if (memberPassword.length < MIN_PASSWORD_LENGTH) {
+      flash(
+        `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
+        true
+      );
+      return;
+    }
+    if (memberPassword !== memberPasswordConfirm) {
+      flash("Passwords do not match.", true);
+      return;
+    }
+
+    setSaving(true);
+    setAction("member-password");
+    const res = await fetch(`/api/team/members/${passwordUserId}/password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: memberPassword }),
+    });
+    const data = (await res.json()) as { error?: string; message?: string };
+    setSaving(false);
+    setAction(null);
+
+    if (!res.ok) {
+      flash(data.error ?? "Failed to set password", true);
+      return;
+    }
+
+    setPasswordUserId(null);
+    setMemberPassword("");
+    setMemberPasswordConfirm("");
+    flash(data.message ?? "Password set.");
   }
 
   async function saveThreshold(e: React.FormEvent) {
@@ -326,7 +412,8 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-2xl font-semibold text-black">Settings</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Team, red-flag threshold, upload history, and model pricing
+          Account password, team, red-flag threshold, upload history, and model
+          pricing
           {pageLoading ? "." : isOwner ? " (owners can edit)." : "."}
         </p>
       </div>
@@ -345,6 +432,56 @@ export default function SettingsPage() {
         <PageLoading label="Loading settings…" />
       ) : (
         <>
+          <section className="brand-panel p-6">
+            <h2 className="font-medium text-black">Account password</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              Set or replace the password for your own login. Supabase Auth
+              stores the hash — useful if you signed up with Google or never set
+              a password in the dashboard.
+            </p>
+            <form
+              onSubmit={saveAccountPassword}
+              className="mt-4 grid gap-3 sm:max-w-md"
+            >
+              <div>
+                <label className="block text-sm font-medium text-black">
+                  New password
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={MIN_PASSWORD_LENGTH}
+                  autoComplete="new-password"
+                  value={accountPassword}
+                  onChange={(e) => setAccountPassword(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-black">
+                  Confirm password
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={MIN_PASSWORD_LENGTH}
+                  autoComplete="new-password"
+                  value={accountPasswordConfirm}
+                  onChange={(e) => setAccountPasswordConfirm(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm"
+                />
+              </div>
+              <LoadingButton
+                type="submit"
+                loading={saving && action === "password"}
+                loadingLabel="Saving…"
+                disabled={saving}
+              >
+                Save password
+              </LoadingButton>
+            </form>
+          </section>
+
           {tenant && (
             <section className="brand-panel p-6">
               <h2 className="font-medium text-black">Workspace profile</h2>
@@ -468,12 +605,74 @@ export default function SettingsPage() {
                 members.map((m) => (
                   <li
                     key={m.user_id}
-                    className="flex items-center justify-between rounded-lg bg-[var(--surface)] px-3 py-2"
+                    className="rounded-lg bg-[var(--surface)] px-3 py-2"
                   >
-                    <span>{m.email ?? `${m.user_id.slice(0, 8)}…`}</span>
-                    <span className="text-xs uppercase tracking-wide text-[var(--muted)]">
-                      {m.role}
-                    </span>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span>{m.email ?? `${m.user_id.slice(0, 8)}…`}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs uppercase tracking-wide text-[var(--muted)]">
+                          {m.role}
+                        </span>
+                        {isOwner && (
+                          <button
+                            type="button"
+                            className="cursor-pointer text-xs font-medium text-black underline"
+                            onClick={() => {
+                              setPasswordUserId(
+                                passwordUserId === m.user_id ? null : m.user_id
+                              );
+                              setMemberPassword("");
+                              setMemberPasswordConfirm("");
+                            }}
+                          >
+                            {passwordUserId === m.user_id
+                              ? "Cancel"
+                              : "Set password"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {isOwner && passwordUserId === m.user_id && (
+                      <form
+                        onSubmit={saveMemberPassword}
+                        className="mt-3 grid gap-2 border-t border-[var(--border)] pt-3 sm:max-w-md"
+                      >
+                        <p className="text-xs text-[var(--muted)]">
+                          Sets an email/password login for this existing Auth
+                          user (Admin API). Requires service role key.
+                        </p>
+                        <input
+                          type="password"
+                          required
+                          minLength={MIN_PASSWORD_LENGTH}
+                          placeholder="New password"
+                          autoComplete="new-password"
+                          value={memberPassword}
+                          onChange={(e) => setMemberPassword(e.target.value)}
+                          className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm"
+                        />
+                        <input
+                          type="password"
+                          required
+                          minLength={MIN_PASSWORD_LENGTH}
+                          placeholder="Confirm password"
+                          autoComplete="new-password"
+                          value={memberPasswordConfirm}
+                          onChange={(e) =>
+                            setMemberPasswordConfirm(e.target.value)
+                          }
+                          className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm"
+                        />
+                        <LoadingButton
+                          type="submit"
+                          loading={saving && action === "member-password"}
+                          loadingLabel="Saving…"
+                          disabled={saving}
+                        >
+                          Save member password
+                        </LoadingButton>
+                      </form>
+                    )}
                   </li>
                 ))
               )}
