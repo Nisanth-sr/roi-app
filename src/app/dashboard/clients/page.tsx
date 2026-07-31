@@ -41,7 +41,10 @@ export default function ClientsPage() {
   }
 
   useEffect(() => {
-    loadClients();
+    // Defer so the effect body does not synchronously set state (react-hooks/set-state-in-effect).
+    queueMicrotask(() => {
+      void loadClients();
+    });
   }, []);
 
   async function addClient(e: React.FormEvent) {

@@ -23,7 +23,7 @@ export async function backfillRequestEnergy(
 
   const coeffRows = (coefficients ?? []) as EnergyCoefficient[];
 
-  let query = supabase
+  const query = supabase
     .from("ai_request_log")
     .select(
       "id, model_id, input_tokens, output_tokens, requested_at, computed_energy_wh"
